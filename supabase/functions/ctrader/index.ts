@@ -96,6 +96,12 @@ Deno.serve(async (req) => {
     const { data: u } = await admin.auth.getUser((req.headers.get("Authorization") ?? "").replace("Bearer ", ""));
     const uid = u.user?.id;
     if (!uid) return json({ error: "not signed in" }, 401);
+    // same approval rule as the journal (is_approved(): member with a non-pending role, or admin)
+    const [{ data: m }, { data: ad }] = await Promise.all([
+      admin.from("app_members").select("role").eq("user_id", uid).maybeSingle(),
+      admin.from("app_admins").select("user_id").eq("user_id", uid).maybeSingle(),
+    ]);
+    if (!ad && (!m || m.role === "pending")) return json({ error: "account not approved yet" }, 403);
     const body = await req.json();
 
     if (body.action === "start") {

@@ -1,16 +1,31 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashicle Trade Desk</title><link rel="stylesheet" href="style.css"></head>
+<title>Dashicle Trade Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css"></head>
 <body>
-<h1>Dashicle Trade Desk</h1>
-<div id="auth" hidden>
-  <input id="email" type="email" placeholder="email"><input id="pw" type="password" placeholder="password">
-  <button id="login">Sign in</button>
+<div class="authwrap" id="auth" hidden>
+  <form class="authbox" id="authForm">
+    <h1>Trade <span>Desk</span></h1>
+    <p class="hint" id="authMsg">Sign in with your journal account.</p>
+    <label class="f"><span>Email</span><input type="email" id="aEmail" autocomplete="username" required></label>
+    <label class="f"><span>Password</span><input type="password" id="aPass" autocomplete="current-password" required minlength="8"></label>
+    <button class="btn primary" type="submit" id="aGo">Sign in</button>
+    <button type="button" class="linkbtn" id="aMode">First time here? Create your account</button>
+  </form>
+  <div class="authbox" id="pendBox" hidden>
+    <h1>Trade <span>Desk</span></h1>
+    <p class="hint">Your account is waiting for approval. Approving it in the journal's Admin menu unlocks Desk too.</p>
+    <button class="btn primary" type="button" id="pendCheck">Check now</button>
+    <button type="button" class="linkbtn" id="pendOut">Sign out</button>
+  </div>
 </div>
-<div id="main" hidden>
-  <button id="link">Link cTrader account(s)</button><button id="refresh">Refresh</button><button id="logout">Sign out</button>
-  <div id="msg"></div>
-  <table><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Equity</th><th>Open trades</th><th>Pending</th></tr></thead><tbody id="rows"></tbody></table>
+<div class="wrap" id="main" hidden>
+  <h1>Trade <span>Desk</span></h1>
+  <div class="bar"><button class="btn primary" id="link">Link cTrader account(s)</button><button class="btn" id="refresh">Refresh</button><button class="btn" id="logout">Sign out</button></div>
+  <p class="hint" id="msg"></p>
+  <div class="panel"><table><thead><tr><th>Account</th><th>Type</th><th class="num">Balance</th><th class="num">Equity</th><th class="num">Open trades</th><th class="num">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>

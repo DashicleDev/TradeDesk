@@ -19,7 +19,7 @@ async function overview() {
       const cells = a.error
         ? [a.label, a.is_live ? "live" : "demo", a.error, "", "", ""]
         : [a.label, a.is_live ? "live" : "demo", a.balance, a.equity, a.positions, a.orders];
-      cells.forEach((c, i) => { const td = document.createElement("td"); td.textContent = c ?? ""; if (i === 1) td.className = c; tr.append(td); });
+      cells.forEach((c, i) => { const td = document.createElement("td"); td.textContent = c ?? ""; if (i === 1) td.className = c; else if (i >= 2) td.className = "num"; tr.append(td); });
       return tr;
     }));
     msg(accounts.length ? "" : "No accounts linked yet.");
@@ -35,14 +35,26 @@ async function handleCallback() {
 }
 
 async function show(session) {
-  $("auth").hidden = !!session; $("main").hidden = !session;
-  if (session) { await handleCallback(); overview(); }
+  if (!session) { $("auth").hidden = false; $("authForm").hidden = false; $("pendBox").hidden = true; $("main").hidden = true; return; }
+  const { data: ok } = await sb.rpc("is_approved"); // same approval as the journal
+  $("auth").hidden = !!ok; $("authForm").hidden = true; $("pendBox").hidden = !!ok; $("main").hidden = !ok;
+  if (ok) { await handleCallback(); overview(); }
 }
 
-$("login").onclick = async () => {
-  const { error } = await sb.auth.signInWithPassword({ email: $("email").value, password: $("pw").value });
-  if (error) alert(error.message);
+let signup = false;
+$("aMode").onclick = () => {
+  signup = !signup;
+  $("aGo").textContent = signup ? "Create account" : "Sign in";
+  $("aMode").textContent = signup ? "Already have an account? Sign in" : "First time here? Create your account";
 };
+$("authForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const c = { email: $("aEmail").value, password: $("aPass").value };
+  const { error } = signup ? await sb.auth.signUp(c) : await sb.auth.signInWithPassword(c);
+  if (error) $("authMsg").textContent = error.message;
+};
+$("pendCheck").onclick = async () => show((await sb.auth.getSession()).data.session);
+$("pendOut").onclick = () => sb.auth.signOut();
 $("logout").onclick = () => sb.auth.signOut();
 $("refresh").onclick = overview;
 $("link").onclick = async () => {
