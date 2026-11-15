@@ -33,6 +33,7 @@
       <button role="tab" data-tab="tDash" aria-selected="true">Dashboard</button>
       <button role="tab" data-tab="tAccounts" aria-selected="false">Accounts</button>
       <button role="tab" data-tab="tTemplates" aria-selected="false">Templates</button>
+      <button role="tab" data-tab="tLog" aria-selected="false">Log</button>
     </nav>
   </header>
 
@@ -54,19 +55,14 @@
         <div id="drafts"></div>
       </div>
       <p class="msg" id="watchNote" style="margin-top:12px"></p>
-      <div class="panel" style="margin-top:20px">
+    </section>
+
+    <section id="tAccounts" hidden>
+      <div class="panel" style="margin-bottom:20px">
         <h2>Accounts</h2>
         <p class="hint">Balance, equity and open trades for every linked cTrader account.</p>
         <div class="tbl"><table><thead><tr><th>Account</th><th>Type</th><th class="r">Balance</th><th class="r">Equity</th><th class="r">Open trades</th><th class="r">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
       </div>
-      <details class="panel logbox" style="margin-top:20px">
-        <summary><h2>Send log</h2></summary>
-        <p class="hint">What was sent where, and what the broker answered. Newest first.</p>
-        <div class="tbl"><table><thead><tr><th>When</th><th>Account</th><th>Order</th><th>Status</th><th>Answer</th></tr></thead><tbody id="logRows"></tbody></table></div>
-      </details>
-    </section>
-
-    <section id="tAccounts" hidden>
       <div class="panel">
         <h2>Linked accounts</h2>
         <p class="hint">Link your cTrader ID once. You log in on cTrader's own page; Desk never sees your broker password.</p>
@@ -74,6 +70,14 @@
         <p class="hint">The first link is view-only. Sending orders needs the trading permission: link again with the second button. Orders still only go to demo accounts for now.</p>
         <div class="tbl"><table><thead><tr><th>Account</th><th>Default template</th><th class="r">Starting size</th></tr></thead><tbody id="accRows"></tbody></table></div>
         <p class="hint" style="margin:12px 0 0">The default template is used when you send an order; you can override it per order. Starting size is what "% at risk" is measured against.</p>
+      </div>
+    </section>
+
+    <section id="tLog" hidden>
+      <div class="panel">
+        <h2>Send log</h2>
+        <p class="hint">What was sent where, and what the broker answered. Newest first.</p>
+        <div class="tbl"><table><thead><tr><th>When</th><th>Account</th><th>Order</th><th>Status</th><th>Answer</th></tr></thead><tbody id="logRows"></tbody></table></div>
       </div>
     </section>
 

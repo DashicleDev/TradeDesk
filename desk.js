@@ -8,7 +8,7 @@ const delBtn = (table, id, reload) => h("td", { className: "r" }, h("button", { 
 
 document.querySelectorAll("nav [data-tab]").forEach((b) => (b.onclick = () => {
   document.querySelectorAll("nav [data-tab]").forEach((x) => x.setAttribute("aria-selected", x === b));
-  ["tDash", "tAccounts", "tTemplates"].forEach((id) => ($(id).hidden = id !== b.dataset.tab));
+  ["tDash", "tAccounts", "tTemplates", "tLog"].forEach((id) => ($(id).hidden = id !== b.dataset.tab));
 }));
 
 document.querySelectorAll(".sheet [data-close]").forEach((b) => (b.onclick = () => (b.closest(".sheet").hidden = true)));

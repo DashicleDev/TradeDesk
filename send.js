@@ -69,14 +69,14 @@ $("rBack").onclick = () => { reviewSheet.hidden = true; };
 
 $("doSend").onclick = async () => {
   const mode = $("doSend").dataset.mode;
-  if (mode === "done") { reviewSheet.hidden = true; $("orderSheet").hidden = true; loadDrafts(); loadLog(); return; }
-  if (mode === "again") { reviewSheet.hidden = true; loadDrafts(); loadLog(); return startReview(); }
+  if (mode === "done") { reviewSheet.hidden = true; $("orderSheet").hidden = true; loadDrafts(); loadLog(); overview(); return; }
+  if (mode === "again") { reviewSheet.hidden = true; loadDrafts(); loadLog(); overview(); return startReview(); }
   const expected = RV.rows.filter((r) => r.ok).map((r) => ({ account_id: r.account_id, lots: r.lots, orderType: r.orderType })); // what was confirmed is what the server must send
   $("doSend").disabled = true; $("rMsg").textContent = "";
   try {
     const r = await call("send", { order_id: RV.orderId, expected });
     RV.rows = r.rows; RV.phase = "sent";
-    renderReview(); loadLog();
+    renderReview(); loadLog(); overview();
   } catch (e) { $("rMsg").textContent = e.message; $("doSend").disabled = false; }
 };
 

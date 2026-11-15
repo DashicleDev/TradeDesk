@@ -3,7 +3,7 @@
 const sheet = $("orderSheet");
 const oe = $("orderForm").elements;
 const POLL_MS = 4000;
-const TK = { autoLots: true, baseline: null, editing: null, entryTouched: false, quote: null, simulated: false, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, pipTouched: false };
+const TK = { autoLots: true, baseline: null, editing: null, entryTouched: false, quote: null, simulated: false, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, keep: {}, pipTouched: false };
 
 const side = () => oe.side.value; // "buy" | "sell" | "" until chosen
 const pip = () => num(oe.pip.value);
@@ -72,7 +72,12 @@ function pipsBetween(symbol, a, b) {
 const updateAll = () => { updateEntry(); syncLeg("sl"); syncLeg("tp"); autoLots(); updateMoney(); updateSend(); };
 
 for (const k of ["sl", "tp"]) {
-  oe[k + "_on"].onchange = () => { TK.src[k] = "pips"; if (oe[k + "_on"].checked && oe[k + "_pips"].value === "") oe[k + "_pips"].value = "10"; updateAll(); }; // start at 10 pips so the buttons have something to move
+  oe[k + "_on"].onchange = () => { // turning it off remembers the distance; turning it on again brings it back, else 10 pips so the buttons have something to move
+    TK.src[k] = "pips";
+    if (!oe[k + "_on"].checked) TK.keep[k] = oe[k + "_pips"].value;
+    else if (oe[k + "_pips"].value === "") oe[k + "_pips"].value = TK.keep[k] || "10";
+    updateAll();
+  };
   oe[k + "_pips"].oninput = () => { TK.src[k] = "pips"; updateAll(); };
   oe[k].oninput = () => { TK.src[k] = "price"; updateAll(); };
 }
@@ -142,7 +147,7 @@ function openSheet() {
   $("delDraft").hidden = true; TK.autoLots = true; TK.editing = null; TK.baseline = null; $("oTitle").textContent = "New order"; $("orderForm").querySelector("button[type=submit]").textContent = "Save draft";
   $("oMsg").textContent = "";
   $("orderForm").reset(); oe.symbol.value = ""; // a hidden field keeps its value through reset()
-  TK.quote = null; TK.src.sl = TK.src.tp = "pips"; TK.pipTouched = false; TK.entryTouched = false;
+  TK.quote = null; TK.keep = {}; TK.src.sl = TK.src.tp = "pips"; TK.pipTouched = false; TK.entryTouched = false;
   oe.pip.value = "0.0001"; oe.lots.removeAttribute("min"); oe.lots.step = "any"; $("lotHint").textContent = ""; $("pipHint").textContent = "1 pip. Taken from the broker once a price is live.";
   ["sl", "tp", "exp"].forEach((k) => ($((k === "exp" ? "exp" : k) + "Box").hidden = true));
   showPrices(); setLive("Choose a symbol to see its live price.");
