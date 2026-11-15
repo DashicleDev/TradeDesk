@@ -279,3 +279,32 @@ label.seg input:focus-visible+span{outline:2px solid var(--accent);outline-offse
 .setl small{font-size:11.5px;font-weight:400;color:var(--muted)}
 .toastfix{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--paper);font-weight:600;font-size:14px;padding:10px 20px;border-radius:99px;pointer-events:none;opacity:0;transition:opacity .15s}
 .toastfix.on{opacity:1}
+
+/* phones: no double-tap zoom on rapid taps (the +1 / +10 buttons), and no auto-zoom when an input is focused (iOS does that below 16px).
+   Pinch-zoom itself stays available. */
+button,.btn,label,summary,input,select,textarea,a,.scard,tr.click,.symitem,.swatches label,label.seg,.sidebtns label{touch-action:manipulation}
+@media (pointer:coarse){
+  input,select,textarea{font-size:16px}
+  .nudge input{font-size:16px;width:92px}
+}
+.settabs button{touch-action:manipulation} /* these buttons reset all their styles, which also resets this one */
+
+/* dashboard: headline numbers and the watchlist */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:20px}
+.stat{display:grid;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.stat .sl{font-size:12px;font-weight:600;color:var(--muted)}
+.stat .sv{font:600 26px var(--mono);letter-spacing:-.01em}
+.stat .ss{font-size:12px;color:var(--muted)}
+.wrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.6fr) 110px;gap:14px;align-items:center;padding:12px 8px;border-top:1px solid var(--line);border-radius:8px}
+.wrow:first-child{border-top:0}
+.wrow.click{cursor:pointer}.wrow.click:hover{background:var(--soft)}.wrow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.wtitle{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.wtitle b{font-size:16px}
+.wtype{color:var(--muted);font-size:13px}
+.wsub{font:500 12px var(--mono);color:var(--muted);margin-top:2px}
+.wtext{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.wtext .warn{color:var(--orange);font-weight:600}
+.wbar{height:6px;border-radius:3px;background:var(--soft);margin-top:5px}
+.wbar i{display:block;height:6px;border-radius:3px;background:var(--accent)}
+.wbar.warn i{background:var(--orange)}
+.wmeta{font-size:12px;color:var(--muted);text-align:right;overflow-wrap:anywhere}
+@media (max-width:640px){.wrow{grid-template-columns:1fr;gap:8px}.wmeta{white-space:normal}}

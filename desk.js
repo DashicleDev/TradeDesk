@@ -21,20 +21,10 @@ async function del(table, id, reload) {
   reload();
 }
 
-// a price with its distance from the entry in pips underneath
-function legCell(o, k) {
-  const v = o[k], p = v != null ? pipsBetween(o.symbol, o.entry, v) : "";
-  return h("td", { className: "r num" }, v != null ? String(v) : "", p ? h("small", { className: "pipsub", textContent: p + " pips" }) : "");
-}
-
 async function loadDrafts() {
   const { data, error } = await sb.from("td_orders").select("*").eq("status", "draft").order("created_at", { ascending: false });
   if (error) return msg(error.message, true);
-  $("draftRows").replaceChildren(...(data.length ? data.map((i) => h("tr", {
-      className: "click", tabIndex: 0, onclick: () => openOrder(i), // tap the row to open it, like the journal
-      onkeydown: (e) => { if (e.key === "Enter") openOrder(i); },
-    },
-    cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), cell(i.order_type === "stop" ? "Stop" : "Limit"), numCell(i.lots), numCell(i.entry), legCell(i, "sl"), legCell(i, "tp"), cell((i.targets || []).length ? (i.targets.length + (i.targets.length === 1 ? " account" : " accounts")) : "none"), cell(i.note))) : [emptyRow(9, "No drafts yet. Use the + button.")]));
+  DRAFTS = data; renderStats(); renderWatch(); refreshPrices(); // the watchlist (watch.js) shows them
 }
 
 

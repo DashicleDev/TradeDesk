@@ -47,7 +47,9 @@ async function overview() {
       return tr;
     }) : [emptyRow(7, none)];
     $("posRows").replaceChildren(...tradeRows(trades.filter((t) => t.kind === "position"), "No open positions."));
-    $("ordRows").replaceChildren(...tradeRows(trades.filter((t) => t.kind === "pending"), "No pending orders."));
+    $("posPanel").hidden = !trades.some((t) => t.kind === "position"); // an empty table is just noise
+    ACCT_DATA = accounts; PENDING = trades.filter((t) => t.kind === "pending");
+    renderStats(); renderWatch(); refreshPrices();
     msg("");
   } catch (e) { msg(e.message, true); }
 }
