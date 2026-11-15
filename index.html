@@ -57,7 +57,7 @@
       <div class="panel" style="margin-top:20px">
         <h2>Drafts</h2>
         <p class="hint">Orders you saved but haven't sent. Create one with the + button.</p>
-        <div class="tbl"><table><thead><tr><th>Pair</th><th>Side</th><th class="r">Lots</th><th class="r">Entry</th><th class="r">SL</th><th class="r">TP</th><th>Note</th><th></th></tr></thead><tbody id="draftRows"></tbody></table></div>
+        <div class="tbl"><table><thead><tr><th>Pair</th><th>Side</th><th>Type</th><th class="r">Lots</th><th class="r">Entry</th><th class="r">SL</th><th class="r">TP</th><th>Note</th><th></th></tr></thead><tbody id="draftRows"></tbody></table></div>
       </div>
     </section>
 
@@ -133,6 +133,7 @@
           </div>
           <p class="hint" style="margin:0">Hard limits: they can't be overridden when you send.</p>
         </div></details>
+        <p class="msg err" id="tMsg"></p>
         <div class="formfoot"><button class="btn primary" type="submit">Save template</button></div>
       </form>
     </div>
@@ -146,23 +147,69 @@
           <h3 id="oTitle">New order</h3>
           <button type="button" class="btn small ghost closex" data-close>Close</button>
         </div>
+
+        <div class="segs" role="radiogroup" aria-label="Order type">
+          <label><input type="radio" name="order_type" value="limit" checked><span>Limit</span></label>
+          <label><input type="radio" name="order_type" value="stop"><span>Stop</span></label>
+        </div>
+        <p class="hint" style="margin:8px 0 16px">Limit waits for a better price, stop waits for the price to break through. Market orders aren't offered: cTrader doesn't accept a stop loss or take profit price on them.</p>
+
         <fieldset>
-          <legend>Setup</legend>
+          <legend>Market</legend>
+          <label class="f"><span>Pair</span><input name="symbol" list="pairs" placeholder="EURUSD" autocapitalize="characters" required></label>
+          <datalist id="pairs"><option value="EURUSD"><option value="GBPUSD"><option value="USDJPY"><option value="GBPJPY"><option value="EURJPY"><option value="AUDUSD"><option value="NZDUSD"><option value="USDCAD"><option value="USDCHF"><option value="XAUUSD"></datalist>
+          <div class="sidebtns" role="radiogroup" aria-label="Direction">
+            <label class="sell"><input type="radio" name="side" value="sell" required><span>SELL<b id="bidTxt">–</b></span></label>
+            <label class="buy"><input type="radio" name="side" value="buy"><span>BUY<b id="askTxt">–</b></span></label>
+          </div>
+          <p class="msg" id="liveLine" style="display:block">Type a pair to see its live price.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Order</legend>
           <div class="fgrid">
-            <label class="f"><span>Pair</span><input name="symbol" placeholder="EURUSD" required></label>
-            <label class="f"><span>Side</span><select name="side"><option value="buy">Long</option><option value="sell">Short</option></select></label>
-            <label class="f"><span>Lots</span><input name="lots" type="number" step="any" min="0" required></label>
-            <label class="f"><span>Entry</span><input name="entry" type="number" step="any" required></label>
-            <label class="f"><span>Stop loss</span><input name="sl" type="number" step="any"></label>
-            <label class="f"><span>Take profit</span><input name="tp" type="number" step="any"></label>
-            <label class="f wide"><span>Note</span><input name="note"></label>
+            <label class="f"><span>Quantity (lots)</span><input name="lots" type="number" step="any" min="0" required><small class="fh" id="lotHint"></small></label>
+            <label class="f"><span>Entry price</span>
+              <div class="stepper"><input name="entry" type="number" step="any" required><button type="button" class="btn small" id="entryDown" aria-label="Down one pip">−</button><button type="button" class="btn small" id="entryUp" aria-label="Up one pip">+</button></div>
+              <small class="fh" id="dist"></small></label>
+            <label class="f"><span>Pip size</span><input name="pip" type="number" step="any" min="0" value="0.0001"><small class="fh" id="pipHint">1 pip. Taken from the broker once a price is live.</small></label>
+          </div>
+          <label class="tog"><input type="checkbox" name="exp_on"><span>Expiry</span></label>
+          <div class="legbox" id="expBox" hidden>
+            <label class="f"><span>Cancel the order at</span><input name="expires" type="datetime-local"></label>
           </div>
         </fieldset>
+
+        <fieldset>
+          <legend>Take profit</legend>
+          <label class="tog"><input type="checkbox" name="tp_on"><span>Use a take profit</span></label>
+          <div class="legbox fgrid" id="tpBox" hidden>
+            <label class="f"><span>Pips</span><input name="tp_pips" type="number" step="any" min="0"></label>
+            <label class="f"><span>Price</span><input name="tp" type="number" step="any"></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Stop loss</legend>
+          <label class="tog"><input type="checkbox" name="sl_on"><span>Use a stop loss</span></label>
+          <div class="legbox fgrid" id="slBox" hidden>
+            <label class="f"><span>Pips</span><input name="sl_pips" type="number" step="any" min="0"></label>
+            <label class="f"><span>Price</span><input name="sl" type="number" step="any"></label>
+          </div>
+          <p class="hint" id="rr" style="margin:8px 0 0"></p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Note</legend>
+          <label class="f"><input name="note" placeholder="Optional"></label>
+        </fieldset>
+
         <fieldset>
           <legend>Send to</legend>
           <div id="sendTo"></div>
           <p class="hint" style="margin:8px 0 0">Sending to accounts arrives in step 3. For now an order is saved as a draft. Check your prop firm's rules before sending one trade to several of its accounts.</p>
         </fieldset>
+        <p class="msg err" id="oMsg"></p>
         <div class="formfoot">
           <button class="btn primary" type="submit">Save draft</button>
           <button class="btn" type="button" disabled title="Coming in step 3">Review &amp; send</button>
@@ -175,4 +222,5 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="desk.js"></script>
+<script src="ticket.js"></script>
 </body></html>

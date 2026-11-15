@@ -1,6 +1,6 @@
 // Trade Desk Edge Function. Holds the cTrader secret (env), tokens (td_tokens), relays read-only cTrader calls.
-// Step 1 is read-only: scope "accounts". Payload type numbers below are from memory of ProtoOAPayloadType:
-// verify against the docs on the first demo run (marked VERIFY).
+// Read-only so far: scope "accounts". Payload type numbers confirmed against help.ctrader.com/open-api/model-messages (2026-11-15).
+// Still unproven until the first real run: the wss connection from here, and pipPosition meaning pip size = 10^-pipPosition (VERIFY).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CLIENT_ID = Deno.env.get("CTRADER_CLIENT_ID")!;
@@ -8,9 +8,10 @@ const CLIENT_SECRET = Deno.env.get("CTRADER_CLIENT_SECRET")!;
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const admin = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-const T = { // VERIFY
+const T = {
   appAuthReq: 2100, accAuthReq: 2102, traderReq: 2121, reconcileReq: 2124,
   accListReq: 2149, pnlReq: 2187, errorRes: 2142, protoError: 50,
+  symbolsListReq: 2114, symbolByIdReq: 2116, subscribeSpotsReq: 2127, spotEvent: 2131,
 };
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -23,11 +24,20 @@ const json = (b: unknown, status = 200) =>
 async function open(live: boolean) {
   const ws = new WebSocket(`wss://${live ? "live" : "demo"}.ctraderapi.com:5036`);
   const pending = new Map<string, (m: any) => void>();
+  const waiters: { type: number; test: (p: any) => boolean; res: (p: any) => void }[] = [];
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     const f = pending.get(m.clientMsgId);
-    if (f) { pending.delete(m.clientMsgId); f(m); }
+    if (f) { pending.delete(m.clientMsgId); return f(m); }
+    const i = waiters.findIndex((w) => w.type === m.payloadType && w.test(m.payload)); // events have no clientMsgId
+    if (i >= 0) waiters.splice(i, 1)[0].res(m.payload);
   };
+  // Resolves with the first pushed event of this type that passes `test`. Register it BEFORE sending the request that triggers it.
+  const waitFor = (type: number, test: (p: any) => boolean, ms = 8000) =>
+    new Promise<any>((res, rej) => {
+      const t = setTimeout(() => rej(new Error("no price received (market closed?)")), ms);
+      waiters.push({ type, test, res: (p) => { clearTimeout(t); res(p); } });
+    });
   await new Promise((res, rej) => { ws.onopen = res; ws.onerror = () => rej(new Error("cTrader connection failed")); });
   const send = (payloadType: number, payload: object) =>
     new Promise<any>((res, rej) => {
@@ -41,7 +51,7 @@ async function open(live: boolean) {
       ws.send(JSON.stringify({ clientMsgId: id, payloadType, payload }));
     });
   await send(T.appAuthReq, { clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-  return { send, close: () => ws.close() };
+  return { send, waitFor, close: () => ws.close() };
 }
 
 async function tokenCall(params: Record<string, string>) {
@@ -97,6 +107,48 @@ function mockAccount(a: any) {
   return { ...base(a), balance, equity: balance + n * 37 - 60, positions: 0, orders: 0, trades: [] };
 }
 
+// Live price for the order ticket. Short-lived connection per call: subscribe, take the first spot, close.
+// Symbol details are cached per instance (they rarely change). Read-only.
+const symCache = new Map<string, any>();
+async function realQuote(a: any, token: string, sym: string) {
+  const c = await open(a.is_live);
+  try {
+    const id = Number(a.ctid_account_id);
+    await c.send(T.accAuthReq, { ctidTraderAccountId: id, accessToken: token });
+    const key = `${id}:${sym}`;
+    let info = symCache.get(key);
+    if (!info) {
+      const list = await c.send(T.symbolsListReq, { ctidTraderAccountId: id });
+      const ls = (list.symbol ?? []).find((s: any) => String(s.symbolName).toUpperCase() === sym);
+      if (!ls) throw new Error(`${sym} not found at this broker`);
+      const s = ((await c.send(T.symbolByIdReq, { ctidTraderAccountId: id, symbolId: [ls.symbolId] })).symbol ?? [])[0];
+      if (!s) throw new Error("symbol details unavailable");
+      const lot = Number(s.lotSize) || 10_000_000; // lot size and volumes are in cents of a unit
+      info = { symbolId: ls.symbolId, digits: s.digits, pip_size: 10 ** -s.pipPosition,
+        min_lots: Number(s.minVolume) / lot, step_lots: Number(s.stepVolume) / lot, max_lots: Number(s.maxVolume) / lot };
+      symCache.set(key, info);
+    }
+    const spot = c.waitFor(T.spotEvent, (p) => Number(p.symbolId) === Number(info.symbolId) && !!p.bid && !!p.ask);
+    await c.send(T.subscribeSpotsReq, { ctidTraderAccountId: id, symbolId: [info.symbolId] });
+    const ev = await spot;
+    return { symbol: sym, bid: Number(ev.bid) / 1e5, ask: Number(ev.ask) / 1e5, digits: info.digits, pip_size: info.pip_size,
+      min_lots: info.min_lots, step_lots: info.step_lots, max_lots: info.max_lots };
+  } finally { c.close(); }
+}
+
+// Simulated prices when no real account is linked yet: majors and gold only. [mid, digits, pipPosition]
+const MOCK: Record<string, [number, number, number]> = {
+  EURUSD: [1.085, 5, 4], GBPUSD: [1.275, 5, 4], AUDUSD: [0.665, 5, 4], NZDUSD: [0.615, 5, 4], USDCAD: [1.395, 5, 4], USDCHF: [0.905, 5, 4],
+  USDJPY: [159.84, 3, 2], GBPJPY: [203.5, 3, 2], EURJPY: [173.5, 3, 2], XAUUSD: [2650.5, 2, 1],
+};
+function mockQuote(sym: string) {
+  const m = MOCK[sym];
+  if (!m) throw new Error(`No simulated price for ${sym} (majors and gold only until an account is linked)`);
+  const [mid, digits, pipPos] = m, pip = 10 ** -pipPos;
+  const jitter = (Math.random() - 0.5) * pip * 4, half = pip * 0.6;
+  return { symbol: sym, bid: +(mid + jitter - half).toFixed(digits), ask: +(mid + jitter + half).toFixed(digits), digits, pip_size: pip, min_lots: 0.01, step_lots: 0.01, max_lots: 100 };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -131,6 +183,15 @@ Deno.serve(async (req) => {
         if (rows.length) await admin.from("td_accounts").upsert(rows, { onConflict: "user_id,ctid_account_id", ignoreDuplicates: true });
         return json({ linked: rows.length });
       } finally { c.close(); }
+    }
+
+    if (body.action === "quote") {
+      const sym = String(body.symbol ?? "").toUpperCase().replace(/[^A-Z0-9._#]/g, "").slice(0, 20);
+      if (!sym) return json({ error: "no pair given" }, 400);
+      const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).eq("is_mock", false).order("is_live").order("created_at").limit(1);
+      const a = accts?.[0]; // a demo account first: the price is the broker's either way
+      if (!a) return json({ quote: mockQuote(sym), simulated: true });
+      return json({ quote: await realQuote(a, await accessToken(uid), sym), simulated: false, account: a.label });
     }
 
     if (body.action === "overview") {

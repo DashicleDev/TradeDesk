@@ -90,3 +90,26 @@ details.acc[open]>summary::after{content:"▴"}
 .authbox input:focus{outline:2px solid var(--accent);outline-offset:1px}
 
 @media (max-width:640px){nav button{padding:10px 8px;font-size:13.5px}.panel{padding:16px}}
+
+/* order ticket */
+.segs{display:inline-flex;gap:2px;padding:4px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.segs label{display:block}.segs input{position:absolute;opacity:0;pointer-events:none}
+.segs span{display:block;padding:4px 18px;font-size:14px;font-weight:600;border-radius:6px;cursor:pointer;color:var(--muted)}
+.segs input:checked+span{background:var(--ink);color:var(--paper)}
+.segs input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.sidebtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 4px}
+.sidebtns label{display:block}.sidebtns input{position:absolute;opacity:0;pointer-events:none}
+.sidebtns span{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px;border-radius:10px;border:2px solid var(--line);background:var(--paper);font:700 14px var(--body);cursor:pointer}
+.sidebtns b{font:600 18px var(--mono);letter-spacing:.01em}
+.sidebtns .sell span{color:var(--live)}.sidebtns .buy span{color:var(--good)}
+.sidebtns .sell input:checked+span{border-color:var(--live);background:color-mix(in srgb,var(--live) 14%,transparent)}
+.sidebtns .buy input:checked+span{border-color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent)}
+.sidebtns input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.stepper{display:flex;gap:6px}.stepper input{flex:1}.stepper .btn{min-width:38px}
+.tog{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer}.tog input{width:auto;accent-color:var(--accent)}
+.legbox{margin-top:12px}
+.msg.warn,.fh.warn{color:var(--bad)}
+.live-ok{color:var(--good)}
+.segs label,.sidebtns label{position:relative}
+.sheet-inner{min-width:0}.stepper input{min-width:0}
+main{grid-template-columns:minmax(0,1fr)}

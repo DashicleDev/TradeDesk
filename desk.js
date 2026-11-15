@@ -11,11 +11,6 @@ document.querySelectorAll("nav [data-tab]").forEach((b) => (b.onclick = () => {
   ["tDash", "tAccounts", "tTemplates"].forEach((id) => ($(id).hidden = id !== b.dataset.tab));
 }));
 
-// "+" opens the order form as a bottom sheet (same pattern as the journal's trade form)
-const sheet = $("orderSheet");
-const openSheet = () => { sheet.hidden = false; $("orderForm").symbol.focus(); };
-const closeSheet = () => { sheet.hidden = true; };
-$("fab").onclick = openSheet;
 document.querySelectorAll(".sheet [data-close]").forEach((b) => (b.onclick = () => (b.closest(".sheet").hidden = true)));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll(".sheet:not([hidden])").forEach((s) => (s.hidden = true)); });
 
@@ -30,18 +25,10 @@ async function loadDrafts() {
   const { data, error } = await sb.from("td_orders").select("*").eq("status", "draft").order("created_at", { ascending: false });
   if (error) return msg(error.message, true);
   $("draftRows").replaceChildren(...(data.length ? data.map((i) => h("tr", {},
-    cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), numCell(i.lots), numCell(i.entry), numCell(i.sl), numCell(i.tp), cell(i.note),
-    delBtn("td_orders", i.id, loadDrafts))) : [emptyRow(8, "No drafts yet. Use the + button.")]));
+    cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), cell(i.order_type === "stop" ? "Stop" : "Limit"), numCell(i.lots), numCell(i.entry), numCell(i.sl), numCell(i.tp), cell(i.note),
+    delBtn("td_orders", i.id, loadDrafts))) : [emptyRow(9, "No drafts yet. Use the + button.")]));
 }
 
-$("orderForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const f = e.target;
-  const row = { symbol: f.symbol.value.trim().toUpperCase(), side: f.side.value, lots: num(f.lots.value), entry: num(f.entry.value), sl: num(f.sl.value), tp: num(f.tp.value), note: f.note.value.trim() || null };
-  const { error } = await sb.from("td_orders").insert(row);
-  if (error) return msg(error.code === "23514" ? "SL must be on the losing side of entry and TP on the winning side." : error.message, true);
-  msg(""); f.reset(); closeSheet(); loadDrafts();
-};
 
 const lotText = (t) => ({ fixed: `${t.lot_value} lots`, risk_pct: `${t.lot_value}% of starting size at risk`, balance_pct: `${t.lot_value}% of balance at risk`, multiplier: `${t.lot_value}× order lots`, size_scale: `scaled to account size (reference ${t.lot_value})` })[t.lot_mode];
 const slTpText = (t) => [
@@ -79,6 +66,7 @@ const syncLotLbl = () => { const m = tplForm.elements.lot_mode.value; $("lotValL
 tplForm.elements.lot_mode.onchange = syncLotLbl;
 function openTpl(t) {
   editingTpl = t?.id ?? null;
+  $("tMsg").textContent = "";
   tplForm.reset();
   $("tTitle").textContent = t ? "Edit template" : "New template";
   if (t) for (const el of tplForm.elements) {
@@ -100,8 +88,8 @@ tplForm.onsubmit = async (e) => {
     fixed_sl_pips: num(v("fixed_sl_pips")), fixed_tp_pips: num(v("fixed_tp_pips")), sl_adjust_pips: num(v("sl_adjust_pips")) ?? 0, tp_adjust_pips: num(v("tp_adjust_pips")) ?? 0,
     min_lots: num(v("min_lots")), max_lots: num(v("max_lots")), expiry_hours: num(v("expiry_hours")), comment: v("comment").trim() || null };
   const { error } = editingTpl ? await sb.from("td_templates").update(row).eq("id", editingTpl) : await sb.from("td_templates").insert(row);
-  if (error) return msg(error.code === "23514" ? "A value is out of range (for example minimum lots above maximum lots)." : error.message, true);
-  msg(""); tplSheet.hidden = true; loadTemplates();
+  if (error) { $("tMsg").textContent = error.code === "23514" ? "A value is out of range (for example minimum lots above maximum lots)." : error.message; return; }
+  $("tMsg").textContent = ""; tplSheet.hidden = true; loadTemplates();
 };
 
 async function loadAccounts() {
