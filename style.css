@@ -373,3 +373,11 @@ button,.btn,label,summary,input,select,textarea,a,.scard,tr.click,.symitem,.swat
 .stats .hero .hv{font:600 34px var(--mono);letter-spacing:-.02em}
 .stats .hero .hs{font-size:13px;color:var(--muted)}
 .stats .stat .sl{display:flex;align-items:center;gap:8px}
+
+/* one row per leg: pips with - / + on the left, the price on the right */
+.legrow{justify-content:space-between;padding-left:0}
+.legrow .nudge input{width:84px}
+.legrow .pxin{width:120px;text-align:right;font-family:var(--mono)}
+.gross{padding-left:0}
+@media (max-width:480px){.legrow .nudge input{width:72px}.legrow .pxin{width:104px}}
+.legrow{flex-direction:row-reverse} /* price on the left, pips with - / + on the right */

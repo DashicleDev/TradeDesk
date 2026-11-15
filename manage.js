@@ -15,7 +15,7 @@ const mFmt = (v) => (v == null || v === "" || Number.isNaN(v) ? "" : String(v));
 const legHtml = (k, word) => `
   <div class="line"><span class="lt">${word}</span><label class="sw"><input type="checkbox" data-sw="${k}" aria-label="${word}"></label></div>
   <div data-box="${k}" hidden>
-    ${["pips", "price"].map((f) => `<div class="subline"><span class="lt">${f === "pips" ? "Pips" : "Price"}</span><div class="nudge" data-leg="${k}" data-field="${f}"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input type="number" step="any" data-in="${k}-${f}"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>`).join("")}
+    <div class="subline legrow"><div class="nudge" data-leg="${k}" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input type="number" step="any" data-in="${k}-pips" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div><input class="pxin" type="number" step="any" data-in="${k}-price" placeholder="price" aria-label="Price"></div>
     <p class="gross" data-gross="${k}"></p>
   </div>`;
 $("mLegs").innerHTML = legHtml("tp", "Take profit") + legHtml("sl", "Stop loss");
