@@ -153,11 +153,6 @@
           <button type="button" class="btn small ghost closex" data-close>Close</button>
         </div>
 
-        <div class="segs full" role="radiogroup" aria-label="Order type">
-          <label><input type="radio" name="order_type" value="limit" checked><span>Limit</span></label>
-          <label><input type="radio" name="order_type" value="stop"><span>Stop</span></label>
-        </div>
-
         <label class="pairrow"><input name="symbol" list="pairs" placeholder="Pair, e.g. EURUSD" autocapitalize="characters" aria-label="Pair" required></label>
         <datalist id="pairs"><option value="EURUSD"><option value="GBPUSD"><option value="USDJPY"><option value="GBPJPY"><option value="EURJPY"><option value="AUDUSD"><option value="NZDUSD"><option value="USDCAD"><option value="USDCHF"><option value="XAUUSD"></datalist>
         <div class="sidebtns" role="radiogroup" aria-label="Direction">
@@ -167,12 +162,9 @@
         <p class="msg" id="liveLine" style="display:block">Type a pair to see its live price.</p>
 
         <div class="lines">
-          <label class="line"><span class="lt">Quantity (lots)<small class="fh" id="lotHint"></small></span><input name="lots" type="number" step="any" min="0" placeholder="0.00" required></label>
+          <label class="line"><span class="lt">Quantity (lots)</span><input name="lots" type="number" step="any" min="0" placeholder="0.00" required></label>
           <div class="line"><span class="lt">Entry price<small class="fh" id="dist"></small></span>
             <div class="stepper"><input name="entry" type="number" step="any" required><button type="button" class="btn small" id="entryDown" aria-label="Down one pip">−</button><button type="button" class="btn small" id="entryUp" aria-label="Up one pip">+</button></div></div>
-
-          <div class="line"><span class="lt">Expiry</span><label class="sw"><input type="checkbox" name="exp_on" aria-label="Expiry"></label></div>
-          <div id="expBox" hidden><label class="subline"><span class="lt">Cancel the order at</span><input name="expires" type="datetime-local"></label></div>
 
           <div class="line"><span class="lt">Take profit</span><label class="sw"><input type="checkbox" name="tp_on" aria-label="Take profit"></label></div>
           <div id="tpBox" hidden>
@@ -185,24 +177,33 @@
             <div class="subline"><span class="lt">Pips</span><div class="nudge" data-leg="sl" data-field="pips"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="sl_pips" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
             <div class="subline"><span class="lt">Price</span><div class="nudge" data-leg="sl" data-field="price"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="sl" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
           </div>
-
-          <label class="line"><span class="lt">Pip size<small class="fh" id="pipHint"></small></span><input name="pip" type="number" step="any" min="0" value="0.0001"></label>
-          <label class="line"><span class="lt">Note</span><input name="note" class="wideinput" placeholder="Optional"></label>
         </div>
 
-        <details class="sendbox">
-          <summary>Send to accounts <small id="sendCount"></small></summary>
-          <div class="sendtools"><button type="button" class="linkbtn" id="selAll">All</button><button type="button" class="linkbtn" id="selNone">None</button></div>
-          <div id="sendTo"></div>
-          <p class="msg warn" id="multiWarn" hidden style="display:block">Several accounts selected. Some prop firms treat one trade sent to several of their accounts as copy trading: check FTMO's and FundingPips' rules first.</p>
-          <p class="hint" id="estNote" hidden style="margin:8px 0 0">≈ marks an estimate: it assumes a USD account and a standard contract size, and works for pairs that include USD. The exact lots are worked out when sending (step 3).</p>
-          <p class="hint" style="margin:8px 0 0">Orders go to demo accounts only for now; live accounts arrive in step 4. Mock accounts get a simulated answer and nothing reaches a broker.</p>
+        <details class="more">
+          <summary>More</summary>
+          <div class="lines">
+            <label class="line"><span class="lt">Pip size<small class="fh" id="pipHint"></small></span><input name="pip" type="number" step="any" min="0" value="0.0001"></label>
+            <div class="line"><span class="lt">Expiry</span><label class="sw"><input type="checkbox" name="exp_on" aria-label="Expiry"></label></div>
+            <div id="expBox" hidden><label class="subline"><span class="lt">Cancel the order at</span><input name="expires" type="datetime-local"></label></div>
+            <label class="line"><span class="lt">Note</span><input name="note" class="wideinput" placeholder="Optional"></label>
+          </div>
         </details>
+        <span id="lotHint" hidden></span>
+
+        <div class="sendbox" id="sendBox">
+          <div class="sendhead">
+            <span class="sendtitle">Send to <small id="sendCount"></small></span>
+            <span class="sendtools"><button type="button" class="linkbtn" id="selAll">All</button><button type="button" class="linkbtn" id="selNone">None</button></span>
+          </div>
+          <div id="sendTo"></div>
+          <p class="msg warn" id="multiWarn" hidden style="display:block">Several accounts: some prop firms treat one trade sent to several of their accounts as copy trading. Check their rules.</p>
+          <p class="hint" id="estNote" hidden style="margin:6px 0 0">≈ is an estimate. The exact lots are set when sending.</p>
+        </div>
 
         <p class="msg err" id="oMsg"></p>
         <div class="formfoot sticky">
-          <button class="btn" type="submit">Save draft</button>
           <button class="btn primary" type="button" id="reviewBtn">Review &amp; send</button>
+          <button class="btn" type="submit">Save draft</button>
         </div>
       </form>
     </div>

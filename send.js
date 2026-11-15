@@ -15,7 +15,7 @@ function reviewCard(r) {
   const card = h("div", { className: "rcard " + (r.ok ? "" : "bad") }, head);
   if (r.template) card.append(h("p", { className: "rtpl", textContent: "Template: " + r.template }));
   if (r.lots != null) {
-    const g = h("div", { className: "rgrid" }, stat("Lots", String(r.lots), "big"), stat("Entry", String(r.entry)), stat("Stop loss", r.sl != null ? String(r.sl) : "none"), stat("Take profit", r.tp != null ? String(r.tp) : "none"));
+    const g = h("div", { className: "rgrid" }, stat("Lots", String(r.lots), "big"), stat("Order", (RV.side === "buy" ? "Buy " : "Sell ") + (r.orderType || "")), stat("Entry", String(r.entry)), stat("Stop loss", r.sl != null ? String(r.sl) : "none"), stat("Take profit", r.tp != null ? String(r.tp) : "none"));
     if (r.riskMoney != null) g.append(stat("Risk", usd(r.riskMoney) + (r.riskPct != null ? ` (${r.riskPct.toFixed(2)}%)` : "")));
     if (r.expiresAt) g.append(stat("Cancels at", when(r.expiresAt)));
     card.append(g);
@@ -34,10 +34,8 @@ function renderReview() {
   const real = okRows.some((r) => !r.simulated);
   const o = $("orderForm").elements;
   $("rTitle").textContent = RV.phase === "sent" ? "Result" : "Review and send";
-  $("rIntro").textContent = RV.phase === "sent"
-    ? "This is what the broker answered. It is also in the send log."
-    : `${o.symbol.value.trim().toUpperCase()} ${o.side.value === "buy" ? "long" : "short"} ${o.order_type.value}. Nothing has been sent yet: check each account, then confirm. ` +
-      (real ? "These orders go to your demo account(s) at the broker." : "These accounts are mock accounts: the answer is simulated and nothing reaches a broker.");
+  $("rIntro").textContent = RV.phase === "sent" ? "This is what the broker answered. It is also in the send log."
+    : o.symbol.value.trim().toUpperCase() + ": nothing is sent until you confirm. " + (real ? "Goes to your demo account(s)." : "Mock accounts: the answer is simulated.");
   const btn = $("doSend");
   if (RV.phase === "sent") {
     const again = rows.some((r) => r.status === "changed");
@@ -59,7 +57,7 @@ async function startReview() {
     const { error, id } = await persistDraft(); // the server reads the saved draft, so save first
     if (error) { $("oMsg").textContent = saveError(error); return; }
     const r = await call("review", { order_id: id });
-    RV = { orderId: id, rows: r.rows, phase: "review" };
+    RV = { orderId: id, rows: r.rows, phase: "review", side: f.elements.side.value };
     $("rMsg").textContent = ""; renderReview(); reviewSheet.hidden = false;
   } catch (e) { $("oMsg").textContent = e.message; }
   finally { b.disabled = false; }

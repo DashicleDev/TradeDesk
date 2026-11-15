@@ -123,9 +123,11 @@ tables.td_orders.push(draft({ id: "ord-33333333-cccc", targets: [{ account_id: "
 const rv3 = await call({ action: "review", order_id: "ord-33333333-cccc" });
 assert.match(by(rv3.rows, "acc-dddddddd").reason, /starting size/);
 assert.match(by(rv3.rows, "acc-aaaaaaaa").reason, /template/);
-tables.td_orders.push(draft({ id: "ord-44444444-dddd", entry: 159.0, targets: [{ account_id: "acc-aaaaaaaa", template_id: "t-scale" }] })); // limit sell below the price
+tables.td_orders.push(draft({ id: "ord-44444444-dddd", entry: 159.0, targets: [{ account_id: "acc-aaaaaaaa", template_id: "t-scale" }] })); // a sell below the price is a stop order
 const rv4 = await call({ action: "review", order_id: "ord-44444444-dddd" });
-assert.match(rv4.rows[0].reason, /wrong side/);
+assert.equal(rv4.rows[0].ok, true, rv4.rows[0].reason);
+assert.equal(rv4.rows[0].orderType, "stop");
+assert.equal(by(review.rows, "acc-aaaaaaaa").orderType, "limit"); // the earlier entry (160.5) sat above the bid: a limit
 
 // 7. someone else's order is invisible
 tables.td_orders.push(draft({ id: "ord-55555555-eeee", user_id: "other" }));

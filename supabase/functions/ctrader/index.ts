@@ -225,26 +225,26 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
         }
         const p = plan({ symbol: order.symbol, account: a, order, tpl, sym, ctx });
         if (!p.ok) return await blocked(p.reason);
-        const shown = { ...head, ok: true, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, expiresAt: p.expiresAt, riskMoney: p.riskMoney, riskPct: p.riskPct, currency: ctx.currency };
+        const shown = { ...head, ok: true, orderType: p.orderType, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, expiresAt: p.expiresAt, riskMoney: p.riskMoney, riskPct: p.riskPct, currency: ctx.currency };
         if (mode === "review") return rows.push({ ...shown, status: "ready" });
 
         // send: what was confirmed must be what goes out
         const want = expected.find((x) => x.account_id === a.id);
         if (!want || Math.abs(want.lots - p.lots) > 1e-9) {
           const why = want ? `the lot size changed from ${want.lots} to ${p.lots} since you reviewed (the price moved): review again` : "this account wasn't in what you confirmed: review again";
-          await admin.from("td_send_log").insert({ ...logBase, status: "changed", message: why, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp });
+          await admin.from("td_send_log").insert({ ...logBase, order_type: p.orderType, status: "changed", message: why, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp });
           return rows.push({ ...shown, ok: false, reason: why, status: "changed" });
         }
         if (!a.is_mock && tk!.scope !== "trading") return await blocked("this link is view-only: link again with the trading permission (Accounts tab)");
 
         const clientId = `${order.id}-${String(a.id).slice(0, 8)}-${earlier.length + 1}`; // unique per attempt: a second send cannot go through
-        const { data: row, error: insErr } = await admin.from("td_send_log").insert({ ...logBase, status: "pending", message: "sending", lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, client_order_id: clientId }).select("id").single();
+        const { data: row, error: insErr } = await admin.from("td_send_log").insert({ ...logBase, order_type: p.orderType, status: "pending", message: "sending", lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, client_order_id: clientId }).select("id").single();
         if (insErr) return rows.push({ ...shown, ok: false, reason: "could not record the attempt, so nothing was sent", status: "blocked" });
         let status = "sent", message = "", response: any = null;
         if (a.is_mock) { status = "simulated"; message = "Simulated: nothing was sent to any broker"; response = { simulated: true, orderId: "SIM-" + crypto.randomUUID().slice(0, 8) }; }
         else {
           try {
-            const limit = order.order_type === "limit";
+            const limit = p.orderType === "limit"; // derived from the entry and the live price, not from what the page stored
             const payload = {
               ctidTraderAccountId: id, symbolId: info.symbolId, orderType: limit ? 2 : 3, tradeSide: order.side === "buy" ? 1 : 2,
               volume: Math.round(p.lots * info.lotSize), [limit ? "limitPrice" : "stopPrice"]: p.entry,

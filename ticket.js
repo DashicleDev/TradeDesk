@@ -15,20 +15,22 @@ const guessPip = (s) => { s = s.toUpperCase(); return s.includes("JPY") ? 0.01 :
 function setLive(text, cls = "") { const e = $("liveLine"); e.textContent = text; e.className = "msg " + cls; e.style.display = "block"; }
 
 // ---- entry: distance from market, direction rule, stepper
+// The order type follows from the entry against the current price: a buy below it (or a sell above it) is a limit order, the
+// other side a stop order. The server decides the same way when it sends; here it is only shown.
+const orderTypeFor = (e, m) => (side() === "buy" ? (e < m ? "limit" : "stop") : (e > m ? "limit" : "stop"));
+const orderTypeNow = () => { const e = num(oe.entry.value), m = market(); return e != null && m != null && e !== m ? orderTypeFor(e, m) : "limit"; };
 function updateEntry() {
   const e = num(oe.entry.value), m = market(), p = pip();
   oe.entry.setCustomValidity("");
   const d = $("dist"); d.className = "fh";
-  if (e == null || m == null || !p) { d.textContent = m == null ? "" : "Enter an entry price."; return; }
+  if (e == null || m == null || !p || !side()) { d.textContent = ""; return; }
   const dist = (e - m) / p;
-  const type = oe.order_type.value, buy = side() === "buy";
-  const below = (type === "limit") === buy; // limit buy and stop sell wait below the market; limit sell and stop buy above
-  const ok = below ? e < m : e > m;
-  d.textContent = `Distance from market: ${dist > 0 ? "+" : ""}${dist.toFixed(1)} pips`;
-  if (!ok) {
-    const msgText = `A ${type} ${buy ? "buy" : "sell"} has to sit ${below ? "below" : "above"} the current price (${m.toFixed(dec())}).`;
-    d.textContent += `. ${msgText}`; oe.entry.setCustomValidity(msgText); if (TK.entryTouched) d.className = "fh warn"; // a default entry sitting on the market only blocks saving, it does not nag
+  if (dist === 0) { // sitting exactly on the market is neither a limit nor a stop: blocks saving, quietly until you touch it
+    const text = "Move the entry away from the market.";
+    d.textContent = text; oe.entry.setCustomValidity(text); if (TK.entryTouched) d.className = "fh warn";
+    return;
   }
+  d.textContent = (side() === "buy" ? "Buy " : "Sell ") + orderTypeFor(e, m) + " \u00b7 " + Math.abs(dist).toFixed(1) + " pips " + (dist > 0 ? "above" : "below") + " the market";
 }
 function step(dir) {
   const p = pip(); if (!p) return;
@@ -77,7 +79,7 @@ oe.exp_on.onchange = () => {
 };
 oe.entry.oninput = () => { TK.entryTouched = true; updateAll(); };
 oe.pip.oninput = () => { TK.pipTouched = true; updateAll(); };
-$("orderForm").addEventListener("change", (e) => { if (e.target.name === "side" || e.target.name === "order_type") { showPrices(); if (e.target.name === "side") defaultEntry(); updateAll(); } });
+$("orderForm").addEventListener("change", (e) => { if (e.target.name === "side") { showPrices(); defaultEntry(); updateAll(); } });
 
 // ---- live price
 function showPrices() {
@@ -143,7 +145,7 @@ $("fab").onclick = openSheet;
 
 function orderRow() {
   return {
-    symbol: oe.symbol.value.trim().toUpperCase(), side: side(), order_type: oe.order_type.value, lots: num(oe.lots.value), entry: num(oe.entry.value),
+    symbol: oe.symbol.value.trim().toUpperCase(), side: side(), order_type: orderTypeNow(), lots: num(oe.lots.value), entry: num(oe.entry.value),
     sl: oe.sl_on.checked ? num(oe.sl.value) : null, tp: oe.tp_on.checked ? num(oe.tp.value) : null,
     expires_at: oe.exp_on.checked && oe.expires.value ? new Date(oe.expires.value).toISOString() : null, note: oe.note.value.trim() || null,
     targets: TK.rows.filter((r) => TK.sel.has(r.a.id)).map((r) => ({ account_id: r.a.id, template_id: r.sel.value || null })), // ticked accounts and their templates
@@ -275,7 +277,6 @@ function openOrder(dr) {
   $("orderForm").querySelector("button[type=submit]").textContent = "Save changes";
   oe.symbol.value = dr.symbol;
   document.querySelector('input[name=side][value="' + dr.side + '"]').checked = true;
-  document.querySelector('input[name=order_type][value="' + (dr.order_type || "limit") + '"]').checked = true;
   oe.lots.value = dr.lots; oe.entry.value = dr.entry; TK.entryTouched = true; // keep the saved entry, don't reset it to the market
   for (const k of ["sl", "tp"]) if (dr[k] != null) { oe[k + "_on"].checked = true; oe[k].value = dr[k]; TK.src[k] = "price"; }
   if (dr.expires_at) {

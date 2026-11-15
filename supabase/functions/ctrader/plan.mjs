@@ -2,7 +2,7 @@
 // Used by both "review" (what the confirm screen shows) and "send" (what actually goes out): the server decides, the page only displays.
 //
 // account: { is_live, start_balance }
-// order:   { side: "buy"|"sell", order_type: "limit"|"stop", lots, entry, sl, tp, expires_at }
+// order:   { side: "buy"|"sell", lots, entry, sl, tp, expires_at }   (the order type is derived here, not read from the order)
 // tpl:     a td_templates row
 // sym:     { digits, pip_size, min_lots, step_lots, max_lots, bid, ask }
 // ctx:     { balance, currency, openCount }  (the account's current state)
@@ -25,10 +25,11 @@ export function plan({ symbol, account, order, tpl, sym, ctx, now = Date.now() }
   const buy = order.side === "buy", pip = sym.pip_size;
   const entry = Number(Number(order.entry).toFixed(sym.digits));
 
-  // the order has to sit on the right side of the current price, or the broker refuses it
+  // the order type follows from where the entry sits against the current price: a buy below it (or a sell above it) is a limit
+  // order, the other side is a stop order. The review screen names the type, so nothing changes kind unnoticed.
   const ref = buy ? sym.ask : sym.bid;          // what you would pay or receive right now
-  const below = (order.order_type === "limit") === buy; // limit buy and stop sell wait below the price, limit sell and stop buy above
-  if (below ? !(entry < ref) : !(entry > ref)) return block("the entry is on the wrong side of the current price");
+  if (entry === ref) return block("the entry equals the current price: move it away from the market");
+  const orderType = buy ? (entry < ref ? "limit" : "stop") : (entry > ref ? "limit" : "stop");
 
   // stop loss / take profit: the template's fixed value, or the order's own, then the adjustment
   const leg = (own, fixedPips, copy, adjust, dir) => {
@@ -82,5 +83,5 @@ export function plan({ symbol, account, order, tpl, sym, ctx, now = Date.now() }
   const expiresAt = order.expires_at ? Date.parse(order.expires_at) : tpl.expiry_hours ? now + tpl.expiry_hours * 3600e3 : null;
   if (expiresAt != null && expiresAt <= now) return block("the expiry is in the past");
 
-  return { ok: true, lots, entry, sl: sl.price, tp: tp.price, expiresAt, riskMoney, riskPct };
+  return { ok: true, orderType, lots, entry, sl: sl.price, tp: tp.price, expiresAt, riskMoney, riskPct };
 }

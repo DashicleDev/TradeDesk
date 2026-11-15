@@ -25,8 +25,12 @@ assert.equal(pipValueUsd("EURUSD", eurusd, "EUR"), null);   // non-USD account: 
 // live account, no template, wrong side of the market
 assert.equal(run({ account: { is_live: true } }).ok, false);
 assert.equal(run({ tpl: null }).reason, "no template chosen");
-assert.match(run({ order: { ...order, entry: 159.7 } }).reason, /wrong side/);        // limit sell below the bid
-assert.equal(run({ order: { ...order, order_type: "stop", entry: 159.7 } }).ok, true); // stop sell below the bid is right
+// the order type follows from the entry against the price (bid 159.834, ask 159.846)
+assert.equal(run({ order: { ...order, entry: 159.9 } }).orderType, "limit");   // sell above the bid
+assert.equal(run({ order: { ...order, entry: 159.7, sl: 159.9, tp: 159.5 } }).orderType, "stop"); // sell below the bid
+assert.equal(run({ order: { ...order, side: "buy", entry: 159.7, sl: 159.5, tp: 159.9 } }).orderType, "limit"); // buy below the ask
+assert.equal(run({ order: { ...order, side: "buy", entry: 160.0, sl: 159.8, tp: 160.3 } }).orderType, "stop");  // buy above the ask
+assert.match(run({ order: { ...order, entry: 159.834 } }).reason, /equals the current price/);
 
 // fixed, multiplier, scale
 assert.equal(run({ tpl: tpl({ lot_mode: "fixed", lot_value: 0.5 }) }).lots, 0.5);
@@ -61,4 +65,5 @@ const long = { ...order, side: "buy", entry: 1.084, sl: 1.082, tp: 1.088 };
 r = plan({ symbol: "EURUSD", account: demo(), order: long, tpl: tpl(), sym: eurusd, ctx });
 assert.equal(r.ok, true);
 assert.equal(r.lots, 5);   // 1000 / (20 pips x $10) = 5
+assert.equal(r.orderType, "limit");
 console.log("plan tests passed");
