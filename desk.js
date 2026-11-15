@@ -95,13 +95,7 @@ tplForm.onsubmit = async (e) => {
 async function loadAccounts() {
   const { data, error } = await sb.from("td_accounts").select("id,label,is_live,default_template_id,start_balance").order("created_at");
   if (error) return msg(error.message, true);
-  // "Send to" list in the order form: pick accounts and a template per account (sending itself is step 3)
-  $("sendTo").replaceChildren(...(data.length ? data.map((a) => {
-    const sel = h("select", {}, h("option", { value: "", textContent: "no template" }), ...templates.map((t) => h("option", { value: t.id, textContent: t.name })));
-    sel.value = a.default_template_id || "";
-    return h("div", { className: "sendrow" }, h("input", { type: "checkbox", value: a.id }), h("span", { textContent: a.label }),
-      h("span", { className: "pill " + (a.is_live ? "warn" : "ok"), textContent: a.is_live ? "live" : "demo" }), sel);
-  }) : [h("p", { className: "hint", textContent: "No accounts linked yet." })]));
+  ACCTS = data; renderSendTo(); // the order form's Send-to list lives in ticket.js
   const save = async (id, patch) => { const { error: er } = await sb.from("td_accounts").update(patch).eq("id", id); if (er) msg(er.message, true); };
   if (!data.length) return $("accRows").replaceChildren(emptyRow(3, "No accounts linked yet."));
   $("accRows").replaceChildren(...data.map((a) => {

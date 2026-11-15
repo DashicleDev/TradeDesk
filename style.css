@@ -152,3 +152,15 @@ main{grid-template-columns:minmax(0,1fr)}
 @media (max-width:480px){.nudge input{width:86px;font-size:14px}}
 .nudge input,.stepper input,.line>input{-moz-appearance:textfield;appearance:textfield}
 .nudge input::-webkit-outer-spin-button,.nudge input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button,.line>input::-webkit-outer-spin-button,.line>input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+/* send-to accounts */
+.sendtools{display:flex;gap:16px;padding:0 0 6px}
+.srow{padding:10px 0;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.srow:last-child{border-bottom:0}
+.shead{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer}
+.shead input{width:auto;accent-color:var(--accent)}
+.sname{flex:1;min-width:0}
+.sctl{display:flex;gap:10px;align-items:center;padding-left:28px}
+.sctl select{flex:1;min-width:0;padding:6px 8px;font-size:14px}
+.slots{font:600 13px var(--mono);text-align:right;max-width:48%;color:var(--muted)}
+.slots.ok{color:var(--good)}.slots.warn{color:var(--bad)}

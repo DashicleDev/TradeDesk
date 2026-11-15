@@ -64,7 +64,7 @@ function updateRR() {
   const s = Math.abs(num(oe.sl_pips.value)), t = Math.abs(num(oe.tp_pips.value)); // a minus sign (as TradingView shows a stop) only marks the direction
   $("rr").textContent = oe.sl_on.checked && oe.tp_on.checked && s > 0 && t > 0 ? `Reward to risk: ${(t / s).toFixed(2)} : 1` : "";
 }
-const updateAll = () => { updateEntry(); syncLeg("sl"); syncLeg("tp"); updateRR(); };
+const updateAll = () => { updateEntry(); syncLeg("sl"); syncLeg("tp"); updateRR(); updateSend(); };
 
 for (const k of ["sl", "tp"]) {
   oe[k + "_on"].onchange = () => { TK.src[k] = "pips"; if (oe[k + "_on"].checked && oe[k + "_pips"].value === "") oe[k + "_pips"].value = "10"; updateAll(); }; // start at 10 pips so the buttons have something to move
@@ -134,7 +134,8 @@ function openSheet() {
   TK.quote = null; TK.src.sl = TK.src.tp = "pips"; TK.pipTouched = false; TK.entryTouched = false;
   oe.pip.value = "0.0001"; oe.lots.removeAttribute("min"); oe.lots.step = "any"; $("lotHint").textContent = ""; $("pipHint").textContent = "1 pip. Taken from the broker once a price is live.";
   ["sl", "tp", "exp"].forEach((k) => ($((k === "exp" ? "exp" : k) + "Box").hidden = true));
-  showPrices(); setLive("Type a pair to see its live price."); updateAll();
+  showPrices(); setLive("Type a pair to see its live price.");
+  TK.sel.clear(); TK.tpl = {}; renderSendTo(); updateAll();
   sheet.hidden = false; oe.symbol.focus();
 }
 $("fab").onclick = openSheet;
@@ -169,3 +170,57 @@ $("orderForm").addEventListener("click", (e) => {
   }
   updateAll();
 });
+
+// ---- "Send to accounts": pick accounts and a template for each, with the resulting lots. Sending itself is step 3.
+let ACCTS = [];
+TK.sel = new Set(); TK.tpl = {}; TK.rows = []; // selected account ids; template picked per account
+const fmtLots = (v) => String(Math.round(v * 1e4) / 1e4);
+function lotsFor(a, tpl, lots) {
+  if (!tpl) return { text: "pick a template", cls: "warn" };
+  let v;
+  if (tpl.lot_mode === "fixed") v = Number(tpl.lot_value);
+  else if (tpl.lot_mode === "multiplier" || tpl.lot_mode === "size_scale") {
+    if (!lots) return { text: "enter a quantity", cls: "" };
+    if (tpl.lot_mode === "size_scale" && !a.start_balance) return { text: "set its starting size", cls: "warn" };
+    v = tpl.lot_mode === "multiplier" ? lots * tpl.lot_value : (lots * a.start_balance) / tpl.lot_value;
+  } else return oe.sl_on.checked ? { text: "sized from your stop when sending", cls: "" } : { text: "needs a stop loss", cls: "warn" };
+  if (tpl.max_lots) v = Math.min(v, tpl.max_lots);
+  if (tpl.min_lots) v = Math.max(v, tpl.min_lots);
+  const q = TK.quote;
+  if (q) { // the broker's own limits: round down to the lot step, skip what is below its minimum
+    v = Math.floor(Math.min(v, q.max_lots) / q.step_lots + 1e-9) * q.step_lots;
+    if (v < q.min_lots - 1e-12) return { text: "below the broker minimum: skipped", cls: "warn" };
+  }
+  return { text: fmtLots(v) + " lots", cls: "ok" };
+}
+function updateSend() {
+  const lots = num(oe.lots.value);
+  let n = 0;
+  for (const r of TK.rows) {
+    const on = r.cb.checked; n += on ? 1 : 0;
+    const out = on ? lotsFor(r.a, templates.find((x) => x.id === r.sel.value), lots) : { text: "", cls: "" };
+    r.res.textContent = out.text; r.res.className = "slots " + out.cls;
+  }
+  $("sendCount").textContent = n ? "· " + n + " selected" : "(arrives in step 3)";
+  $("multiWarn").hidden = n < 2;
+}
+function renderSendTo() {
+  TK.rows = [];
+  if (!ACCTS.length) { $("sendTo").replaceChildren(h("p", { className: "hint", textContent: "No accounts linked yet." })); return updateSend(); }
+  $("sendTo").replaceChildren(...ACCTS.map((a) => {
+    const cb = h("input", { type: "checkbox", checked: TK.sel.has(a.id), onchange: () => { cb.checked ? TK.sel.add(a.id) : TK.sel.delete(a.id); updateSend(); } });
+    const sel = h("select", { onchange: () => { TK.tpl[a.id] = sel.value; updateSend(); } },
+      h("option", { value: "", textContent: "No template" }), ...templates.map((x) => h("option", { value: x.id, textContent: x.name })));
+    sel.setAttribute("aria-label", "Template for " + a.label);
+    sel.value = TK.tpl[a.id] ?? a.default_template_id ?? "";
+    const res = h("span", { className: "slots" });
+    TK.rows.push({ a, cb, sel, res });
+    return h("div", { className: "srow" },
+      h("label", { className: "shead" }, cb, h("span", { className: "sname", textContent: a.label }), h("span", { className: "pill " + (a.is_live ? "warn" : "ok"), textContent: a.is_live ? "live" : "demo" })),
+      h("div", { className: "sctl" }, sel, res));
+  }));
+  updateSend();
+}
+$("selAll").onclick = () => { ACCTS.forEach((a) => TK.sel.add(a.id)); renderSendTo(); };
+$("selNone").onclick = () => { TK.sel.clear(); renderSendTo(); };
+oe.lots.oninput = updateSend;

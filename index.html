@@ -185,9 +185,11 @@
         </div>
 
         <details class="sendbox">
-          <summary>Send to accounts <small>(arrives in step 3)</small></summary>
+          <summary>Send to accounts <small id="sendCount">(arrives in step 3)</small></summary>
+          <div class="sendtools"><button type="button" class="linkbtn" id="selAll">All</button><button type="button" class="linkbtn" id="selNone">None</button></div>
           <div id="sendTo"></div>
-          <p class="hint" style="margin:8px 0 0">For now an order is saved as a draft. Check your prop firm's rules before sending one trade to several of its accounts.</p>
+          <p class="msg warn" id="multiWarn" hidden style="display:block">Several accounts selected. Some prop firms treat one trade sent to several of their accounts as copy trading: check FTMO's and FundingPips' rules first.</p>
+          <p class="hint" style="margin:8px 0 0">Nothing is sent yet: sending arrives in step 3. For now the order is saved as a draft.</p>
         </details>
 
         <p class="msg err" id="oMsg"></p>
