@@ -381,6 +381,18 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (body.action === "sim_amend") { // move or remove SL / TP on simulated trades; null removes
+      const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
+      const patch: Record<string, number | null> = {}; // only what was sent: a field left out stays as it is
+      for (const k of ["sl", "tp"]) if (k in body) { const v = num(body[k]); if (v !== null && !(v > 0)) return json({ error: "SL and TP must be prices" }, 400); patch[k] = v; }
+      if (!Object.keys(patch).length) return json({ error: "nothing to change" }, 400);
+      const ids = (Array.isArray(body.ids) ? body.ids : []).map(String).slice(0, 50);
+      if (!ids.length) return json({ error: "no trades chosen" }, 400);
+      const { error } = await admin.from("td_sim").update(patch).in("id", ids).eq("user_id", uid).neq("status", "closed");
+      if (error) return json({ error: "could not save" }, 500);
+      return json({ ok: true });
+    }
+
     if (body.action === "overview") {
       const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).order("created_at");
       if (!accts?.length) return json({ accounts: [] });

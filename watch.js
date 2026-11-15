@@ -19,8 +19,15 @@ function renderStats() {
 function watchItems() {
   const items = DRAFTS.map((d) => ({ kind: "draft", d, symbol: d.symbol, side: d.side, entry: Number(d.entry), sl: d.sl, tp: d.tp, ref: d.entry_ref, type: d.order_type,
     meta: (d.targets || []).length ? d.targets.length + (d.targets.length === 1 ? " account" : " accounts") : "no accounts yet" }));
-  PENDING.forEach((t) => items.push({ kind: "pending", t, symbol: t.symbol, side: t.side, entry: Number(t.price), sl: t.sl, tp: t.tp, ref: null, type: t.orderType || "limit", meta: t.account }));
-  POSITIONS.forEach((t) => items.push({ kind: "position", t, symbol: t.symbol, side: t.side, entry: Number(t.price), sl: t.sl, tp: t.tp, meta: t.account }));
+  // the same trade on several accounts is one row: same pair, side, entry, SL and TP
+  const groups = new Map();
+  const add = (kind, t) => {
+    const key = [kind, t.symbol, t.side, t.price, t.sl, t.tp, t.orderType].join("|");
+    if (!groups.has(key)) { const g = { kind, ts: [], symbol: t.symbol, side: t.side, entry: Number(t.price), sl: t.sl, tp: t.tp, ref: null, type: t.orderType || "limit" }; groups.set(key, g); items.push(g); }
+    groups.get(key).ts.push(t);
+  };
+  PENDING.forEach((t) => add("pending", t));
+  POSITIONS.forEach((t) => add("position", t));
   return items;
 }
 
@@ -44,13 +51,11 @@ const pipsOf = (it, v) => {
   return q ? String(Math.round((Math.abs(it.entry - v) / q.pip_size) * 10) / 10) : pipsBetween(it.symbol, it.entry, v);
 };
 
-async function simAct(action, id) {
-  try { await call(action, { id }); overview(); } catch (e) { msg(e.message, true); }
-}
 
+const go = (it) => (it.kind === "draft" ? openOrder(it.d) : openManage(it));
 function watchRow(it) {
   const sl = pipsOf(it, it.sl), tp = pipsOf(it, it.tp);
-  const sub = (it.kind === "position" ? it.t.lots + " lots \u00b7 " : "") + "entry " + it.entry + (sl ? " \u00b7 SL " + sl : "") + (tp ? " \u00b7 TP " + tp : "") + (sl || tp ? " pips" : "");
+  const sub = (it.ts ? it.ts.map((t) => t.lots).join(" + ") + " lots \u00b7 " : "") + "entry " + it.entry + (sl ? " \u00b7 SL " + sl : "") + (tp ? " \u00b7 TP " + tp : "") + (sl || tp ? " pips" : "");
   let left = "No price yet", right = "", cls = "", btns = [];
   const q = PX[it.symbol];
   if (it.kind === "position") {
@@ -59,7 +64,6 @@ function watchRow(it) {
       left = "Price " + (it.side === "buy" ? q.bid : q.ask).toFixed(q.digits);
       right = (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips"; cls = pips >= 0 ? "long" : "short";
     }
-    if (it.t.sim) btns.push(h("button", { className: "btn small ghost", textContent: "Close", onclick: () => simAct("sim_close", it.t.id) }));
   } else {
     const dist = distance(it);
     if (dist) {
@@ -68,16 +72,15 @@ function watchRow(it) {
       else if (dist.state === "at") { right = "At the price"; cls = "warn"; }
       else { right = dist.limit ? "Passed \u00b7 goes at market" : "Passed"; cls = "warn"; }
     }
-    if (it.kind === "pending" && it.t.sim) btns.push(h("button", { className: "btn small", textContent: "Fill now", onclick: () => simAct("sim_fill", it.t.id) }), h("button", { className: "btn small ghost", textContent: "Cancel", onclick: () => simAct("sim_close", it.t.id) }));
   }
-  const open = it.kind === "draft";
-  return h("div", { className: "wrow" + (open ? " click" : ""), tabIndex: open ? 0 : -1, onclick: open ? () => openOrder(it.d) : null, onkeydown: open ? (e) => { if (e.key === "Enter") openOrder(it.d); } : null },
+  const open = true; // drafts open the ticket, running and pending trades open the manage menu
+  return h("div", { className: "wrow" + (open ? " click" : ""), tabIndex: open ? 0 : -1, onclick: () => go(it), onkeydown: (e) => { if (e.key === "Enter") go(it); } },
     h("div", { className: "wmain" },
       h("div", { className: "wtitle" }, h("b", { textContent: it.symbol }), h("span", { className: it.side === "buy" ? "long" : "short", textContent: it.side === "buy" ? "long" : "short" }),
-        h("span", { className: "wtype", textContent: it.kind === "position" ? "" : it.type }), it.t && it.t.sim ? h("span", { className: "pill", textContent: "sim" }) : ""),
+        h("span", { className: "wtype", textContent: it.kind === "position" ? "" : it.type }), it.ts && it.ts[0].sim ? h("span", { className: "pill", textContent: "sim" }) : ""),
       h("div", { className: "wsub", textContent: sub })),
     h("div", { className: "wtext" }, h("span", { textContent: left }), h("span", { className: cls, textContent: right })),
-    h("div", { className: "wmeta" }, h("span", { textContent: it.meta }), ...btns));
+    h("div", { className: "wmeta" }, h("span", { textContent: it.meta || it.ts.map((t) => t.account).join(", ") }), ...btns));
 }
 
 function renderWatch() {

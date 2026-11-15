@@ -214,6 +214,32 @@
     </div>
   </div>
 </div>
+  <div class="sheet" id="manageSheet" hidden>
+    <div class="scrim" data-close></div>
+    <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+      <div class="formhead"><h3 id="mTitle">Manage</h3><button type="button" class="btn small ghost closex" data-close>Close</button></div>
+      <div class="lines">
+        <div class="line"><span class="lt">Symbol</span><b id="mSym"></b></div>
+        <div class="line"><span class="lt">Direction</span><b id="mSide"></b></div>
+        <div class="line"><span class="lt">Quantity (lots)</span><b id="mLots"></b></div>
+        <div class="line"><span class="lt">Entry price<small class="fh" id="mDist"></small></span><b id="mEntry"></b></div>
+      </div>
+      <div class="lines" id="mLegs"></div>
+      <div class="sendbox">
+        <div class="sendhead">
+          <span class="sendtitle">Apply to <small id="mCount"></small></span>
+          <span class="sendtools"><button type="button" class="linkbtn" id="mAll">All</button><button type="button" class="linkbtn" id="mNone">None</button></span>
+        </div>
+        <div id="mAccts"></div>
+      </div>
+      <p class="msg err" id="mMsg"></p>
+      <div class="formfoot sticky">
+        <button class="btn primary" type="button" id="mSave">Save changes</button>
+        <button class="btn" type="button" id="mFill">Fill now</button>
+        <button class="btn ghost danger" type="button" id="mClose">Close</button>
+      </div>
+    </div>
+  </div>
   <div class="sheet" id="reviewSheet" hidden>
     <div class="scrim" data-close></div>
     <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="rTitle">
@@ -273,4 +299,5 @@
 <script src="symbols.js"></script>
 <script src="settings.js"></script>
 <script src="watch.js"></script>
+<script src="manage.js"></script>
 </body></html>
