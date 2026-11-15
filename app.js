@@ -60,5 +60,10 @@ $("refresh").onclick = overview;
 $("link").onclick = async () => {
   try { location.href = (await call("start", { redirect_uri: redirectUri })).url; } catch (e) { msg(e.message, true); }
 };
-sb.auth.onAuthStateChange((_e, s) => show(s));
-sb.auth.getSession().then(({ data }) => show(data.session));
+// setTimeout: calling supabase inside this callback deadlocks. Skip repeat events for the same user (tab focus, token refresh).
+let shownFor;
+sb.auth.onAuthStateChange((ev, s) => setTimeout(() => {
+  const id = s?.user?.id ?? null;
+  if (ev !== "INITIAL_SESSION" && id === shownFor) return;
+  shownFor = id; show(s);
+}, 0));
