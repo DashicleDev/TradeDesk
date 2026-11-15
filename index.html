@@ -93,38 +93,41 @@
             <label class="f"><span>Lot size</span><select name="lot_mode">
               <option value="fixed">Fixed lots</option>
               <option value="multiplier">Multiple of the order's lots</option>
+              <option value="size_scale">Scale to account size</option>
               <option value="risk_pct">% of starting size at risk</option>
               <option value="balance_pct">% of current balance at risk</option></select></label>
             <label class="f"><span id="lotValLbl">Lots</span><input name="lot_value" type="number" step="any" min="0" required></label>
           </div>
+          <p class="hint" id="lotHelp" style="margin:12px 0 0;max-width:none"></p>
         </div></details>
         <details class="acc"><summary>SL and TP</summary><div class="accb">
           <div class="row" style="margin-bottom:12px">
             <label class="f ck"><input name="copy_sl" type="checkbox" checked><span>Copy stop loss</span></label>
             <label class="f ck"><input name="copy_tp" type="checkbox" checked><span>Copy take profit</span></label>
           </div>
+          <p class="hint">Copy = use the stop loss / take profit written on the order. Off = send without one, unless a fixed value below is set. A "% at risk" lot size needs a stop loss.</p>
           <div class="fgrid">
-            <label class="f"><span>Fixed stop loss (pips)</span><input name="fixed_sl_pips" type="number" step="any" min="0" placeholder="off"></label>
-            <label class="f"><span>Fixed take profit (pips)</span><input name="fixed_tp_pips" type="number" step="any" min="0" placeholder="off"></label>
-            <label class="f"><span>Stop loss adjustment (pips)</span><input name="sl_adjust_pips" type="number" step="any" value="0"></label>
-            <label class="f"><span>Take profit adjustment (pips)</span><input name="tp_adjust_pips" type="number" step="any" value="0"></label>
+            <label class="f"><span>Fixed stop loss (pips)</span><input name="fixed_sl_pips" type="number" step="any" min="0" placeholder="off"><small class="fh">Distance from entry. Replaces the order's own stop loss. Empty = off.</small></label>
+            <label class="f"><span>Fixed take profit (pips)</span><input name="fixed_tp_pips" type="number" step="any" min="0" placeholder="off"><small class="fh">Distance from entry. Replaces the order's own take profit. Empty = off.</small></label>
+            <label class="f"><span>Stop loss adjustment (pips)</span><input name="sl_adjust_pips" type="number" step="any" value="0"><small class="fh">Positive = further from entry (wider), negative = closer. +2 covers a wide spread.</small></label>
+            <label class="f"><span>Take profit adjustment (pips)</span><input name="tp_adjust_pips" type="number" step="any" value="0"><small class="fh">Positive = further from entry, negative = closer.</small></label>
           </div>
-          <p class="hint" style="margin:0">A fixed value replaces the order's own SL or TP. An adjustment moves it away from entry (positive) or closer (negative).</p>
         </div></details>
         <details class="acc"><summary>Advanced</summary><div class="accb">
-          <div class="row" style="margin-bottom:12px"><label class="f ck"><input name="reverse" type="checkbox"><span>Reverse direction</span></label></div>
+          <div class="row"><label class="f ck"><input name="reverse" type="checkbox"><span>Reverse direction</span></label></div>
+          <p class="hint">Sends the opposite direction (long becomes short, and the other way round). Stop loss and take profit mirror around the entry.</p>
           <div class="fgrid">
-            <label class="f"><span>Minimum lots</span><input name="min_lots" type="number" step="any" min="0" placeholder="off"></label>
-            <label class="f"><span>Maximum lots</span><input name="max_lots" type="number" step="any" min="0" placeholder="off"></label>
-            <label class="f"><span>Pending order expires after (hours)</span><input name="expiry_hours" type="number" step="any" min="0" placeholder="good till cancelled"></label>
-            <label class="f"><span>Order comment</span><input name="comment" maxlength="100"></label>
-            <label class="f wide"><span>Symbol mapping (one per line: PAIR=BROKER)</span><textarea name="symbol_map" rows="2" placeholder="XAUUSD=GOLD"></textarea></label>
+            <label class="f"><span>Minimum lots</span><input name="min_lots" type="number" step="any" min="0" placeholder="off"><small class="fh">If the lots come out smaller, raise them to this. Below the broker's own minimum the account is skipped.</small></label>
+            <label class="f"><span>Maximum lots</span><input name="max_lots" type="number" step="any" min="0" placeholder="off"><small class="fh">Cap the lots at this, whatever the lot size rule gives.</small></label>
+            <label class="f"><span>Pending order expires after (hours)</span><input name="expiry_hours" type="number" step="any" min="0" placeholder="good till cancelled"><small class="fh">The broker cancels it automatically if it hasn't filled by then. Empty = stays until filled or cancelled.</small></label>
+            <label class="f"><span>Order comment</span><input name="comment" maxlength="100"><small class="fh">Text attached to the order at the broker (max 100 characters). Helps you recognise Desk orders.</small></label>
+            <label class="f wide"><span>Symbol mapping (one per line: PAIR=BROKER)</span><textarea name="symbol_map" rows="2" placeholder="XAUUSD=GOLD"></textarea><small class="fh">For brokers that name a pair differently, e.g. XAUUSD=GOLD sends "GOLD" where the order says XAUUSD.</small></label>
           </div>
         </div></details>
         <details class="acc"><summary>Limits</summary><div class="accb">
           <div class="fgrid">
-            <label class="f"><span>Max open trades</span><input name="max_open" type="number" min="1" placeholder="off"></label>
-            <label class="f"><span>Max risk % per account</span><input name="max_risk_pct" type="number" step="any" min="0" placeholder="off"></label>
+            <label class="f"><span>Max open trades</span><input name="max_open" type="number" min="1" placeholder="off"><small class="fh">Skip an account that already has this many open trades.</small></label>
+            <label class="f"><span>Max risk % per account</span><input name="max_risk_pct" type="number" step="any" min="0" placeholder="off"><small class="fh">Skip an account if this order would risk more than this % of its starting size. Needs a stop loss.</small></label>
           </div>
           <p class="hint" style="margin:0">Hard limits: they can't be overridden when you send.</p>
         </div></details>

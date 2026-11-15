@@ -44,7 +44,7 @@ $("orderForm").onsubmit = async (e) => {
 };
 
 const parseMap = (t) => Object.fromEntries(t.split("\n").map((l) => l.split("=").map((s) => s.trim())).filter(([a, b]) => a && b));
-const lotText = (t) => ({ fixed: `${t.lot_value} lots`, risk_pct: `${t.lot_value}% of starting size at risk`, balance_pct: `${t.lot_value}% of balance at risk`, multiplier: `${t.lot_value}× order lots` })[t.lot_mode];
+const lotText = (t) => ({ fixed: `${t.lot_value} lots`, risk_pct: `${t.lot_value}% of starting size at risk`, balance_pct: `${t.lot_value}% of balance at risk`, multiplier: `${t.lot_value}× order lots`, size_scale: `scaled to account size (reference ${t.lot_value})` })[t.lot_mode];
 const slTpText = (t) => [
   t.fixed_sl_pips ? `SL ${t.fixed_sl_pips} pips` : t.copy_sl ? "SL copied" : "no SL",
   t.fixed_tp_pips ? `TP ${t.fixed_tp_pips} pips` : t.copy_tp ? "TP copied" : "no TP",
@@ -68,8 +68,15 @@ async function loadTemplates() {
 // Template editor: collapsible sections in a bottom sheet. Use f.elements[...]: form.name is the form's own name, not the field.
 const tplSheet = $("tplSheet"), tplForm = $("tplForm");
 let editingTpl = null;
-const LOT_LBL = { fixed: "Lots", multiplier: "Multiplier (×)", risk_pct: "Risk (% of starting size)", balance_pct: "Risk (% of balance)" };
-const syncLotLbl = () => ($("lotValLbl").textContent = LOT_LBL[tplForm.elements.lot_mode.value]);
+const LOT_LBL = { fixed: "Lots", multiplier: "Multiplier (×)", size_scale: "Reference account size", risk_pct: "Risk (% of starting size)", balance_pct: "Risk (% of balance)" };
+const LOT_HELP = {
+  fixed: "Every account trades exactly this many lots, whatever its size. Example: 0.5 means 0.5 lots on every account.",
+  multiplier: "The order's lots times this number. Example: an order of 2 lots with 0.5 gives 1 lot; with 2 it gives 4 lots.",
+  size_scale: "The order's lots are written for a reference account size. Each account gets lots in proportion to its starting size. Example: order 5 lots, reference 100000: a 200k account gets 10 lots, a 10k account 0.5. Needs each account's starting size (Accounts tab). An account too small for the broker's minimum lot is skipped.",
+  risk_pct: "Lots are sized so that if the stop loss is hit you lose this % of the account's starting size. Example: 1 on a 100k account risks 1,000. Needs a stop loss on the order and the account's starting size (Accounts tab).",
+  balance_pct: "Like the one above, but measured on the current balance: the money at risk shrinks after losses and grows after wins. Needs a stop loss on the order.",
+};
+const syncLotLbl = () => { const m = tplForm.elements.lot_mode.value; $("lotValLbl").textContent = LOT_LBL[m]; $("lotHelp").textContent = LOT_HELP[m]; };
 tplForm.elements.lot_mode.onchange = syncLotLbl;
 function openTpl(t) {
   editingTpl = t?.id ?? null;
