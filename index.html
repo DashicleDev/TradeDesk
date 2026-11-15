@@ -141,76 +141,57 @@
   <div class="sheet" id="orderSheet" hidden>
     <div class="scrim" data-close></div>
     <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="oTitle">
-      <form id="orderForm" autocomplete="off">
+      <form id="orderForm" class="tk" autocomplete="off">
         <div class="formhead">
-          <span class="chip">Pending order</span>
           <h3 id="oTitle">New order</h3>
           <button type="button" class="btn small ghost closex" data-close>Close</button>
         </div>
 
-        <div class="segs" role="radiogroup" aria-label="Order type">
+        <div class="segs full" role="radiogroup" aria-label="Order type">
           <label><input type="radio" name="order_type" value="limit" checked><span>Limit</span></label>
           <label><input type="radio" name="order_type" value="stop"><span>Stop</span></label>
         </div>
-        <p class="hint" style="margin:8px 0 16px">Limit waits for a better price, stop waits for the price to break through. Market orders aren't offered: cTrader doesn't accept a stop loss or take profit price on them.</p>
 
-        <fieldset>
-          <legend>Market</legend>
-          <label class="f"><span>Pair</span><input name="symbol" list="pairs" placeholder="EURUSD" autocapitalize="characters" required></label>
-          <datalist id="pairs"><option value="EURUSD"><option value="GBPUSD"><option value="USDJPY"><option value="GBPJPY"><option value="EURJPY"><option value="AUDUSD"><option value="NZDUSD"><option value="USDCAD"><option value="USDCHF"><option value="XAUUSD"></datalist>
-          <div class="sidebtns" role="radiogroup" aria-label="Direction">
-            <label class="sell"><input type="radio" name="side" value="sell" required><span>SELL<b id="bidTxt">–</b></span></label>
-            <label class="buy"><input type="radio" name="side" value="buy"><span>BUY<b id="askTxt">–</b></span></label>
+        <label class="pairrow"><input name="symbol" list="pairs" placeholder="Pair, e.g. EURUSD" autocapitalize="characters" aria-label="Pair" required></label>
+        <datalist id="pairs"><option value="EURUSD"><option value="GBPUSD"><option value="USDJPY"><option value="GBPJPY"><option value="EURJPY"><option value="AUDUSD"><option value="NZDUSD"><option value="USDCAD"><option value="USDCHF"><option value="XAUUSD"></datalist>
+        <div class="sidebtns" role="radiogroup" aria-label="Direction">
+          <label class="sell"><input type="radio" name="side" value="sell" required><span>SELL<b id="bidTxt">–</b></span></label>
+          <label class="buy"><input type="radio" name="side" value="buy"><span>BUY<b id="askTxt">–</b></span></label>
+        </div>
+        <p class="msg" id="liveLine" style="display:block">Type a pair to see its live price.</p>
+
+        <div class="lines">
+          <label class="line"><span class="lt">Quantity (lots)<small class="fh" id="lotHint"></small></span><input name="lots" type="number" step="any" min="0" placeholder="0.00" required></label>
+          <div class="line"><span class="lt">Entry price<small class="fh" id="dist"></small></span>
+            <div class="stepper"><input name="entry" type="number" step="any" required><button type="button" class="btn small" id="entryDown" aria-label="Down one pip">−</button><button type="button" class="btn small" id="entryUp" aria-label="Up one pip">+</button></div></div>
+
+          <div class="line"><span class="lt">Expiry</span><label class="sw"><input type="checkbox" name="exp_on" aria-label="Expiry"></label></div>
+          <div id="expBox" hidden><label class="subline"><span class="lt">Cancel the order at</span><input name="expires" type="datetime-local"></label></div>
+
+          <div class="line"><span class="lt">Take profit</span><label class="sw"><input type="checkbox" name="tp_on" aria-label="Take profit"></label></div>
+          <div id="tpBox" hidden>
+            <label class="subline"><span class="lt">Pips</span><input name="tp_pips" type="number" step="any" min="0"></label>
+            <label class="subline"><span class="lt">Price</span><input name="tp" type="number" step="any"></label>
           </div>
-          <p class="msg" id="liveLine" style="display:block">Type a pair to see its live price.</p>
-        </fieldset>
 
-        <fieldset>
-          <legend>Order</legend>
-          <div class="fgrid">
-            <label class="f"><span>Quantity (lots)</span><input name="lots" type="number" step="any" min="0" required><small class="fh" id="lotHint"></small></label>
-            <label class="f"><span>Entry price</span>
-              <div class="stepper"><input name="entry" type="number" step="any" required><button type="button" class="btn small" id="entryDown" aria-label="Down one pip">−</button><button type="button" class="btn small" id="entryUp" aria-label="Up one pip">+</button></div>
-              <small class="fh" id="dist"></small></label>
-            <label class="f"><span>Pip size</span><input name="pip" type="number" step="any" min="0" value="0.0001"><small class="fh" id="pipHint">1 pip. Taken from the broker once a price is live.</small></label>
+          <div class="line"><span class="lt">Stop loss<small class="fh" id="rr"></small></span><label class="sw"><input type="checkbox" name="sl_on" aria-label="Stop loss"></label></div>
+          <div id="slBox" hidden>
+            <label class="subline"><span class="lt">Pips</span><input name="sl_pips" type="number" step="any" min="0"></label>
+            <label class="subline"><span class="lt">Price</span><input name="sl" type="number" step="any"></label>
           </div>
-          <label class="tog"><input type="checkbox" name="exp_on"><span>Expiry</span></label>
-          <div class="legbox" id="expBox" hidden>
-            <label class="f"><span>Cancel the order at</span><input name="expires" type="datetime-local"></label>
-          </div>
-        </fieldset>
 
-        <fieldset>
-          <legend>Take profit</legend>
-          <label class="tog"><input type="checkbox" name="tp_on"><span>Use a take profit</span></label>
-          <div class="legbox fgrid" id="tpBox" hidden>
-            <label class="f"><span>Pips</span><input name="tp_pips" type="number" step="any" min="0"></label>
-            <label class="f"><span>Price</span><input name="tp" type="number" step="any"></label>
-          </div>
-        </fieldset>
+          <label class="line"><span class="lt">Pip size<small class="fh" id="pipHint"></small></span><input name="pip" type="number" step="any" min="0" value="0.0001"></label>
+          <label class="line"><span class="lt">Note</span><input name="note" class="wideinput" placeholder="Optional"></label>
+        </div>
 
-        <fieldset>
-          <legend>Stop loss</legend>
-          <label class="tog"><input type="checkbox" name="sl_on"><span>Use a stop loss</span></label>
-          <div class="legbox fgrid" id="slBox" hidden>
-            <label class="f"><span>Pips</span><input name="sl_pips" type="number" step="any" min="0"></label>
-            <label class="f"><span>Price</span><input name="sl" type="number" step="any"></label>
-          </div>
-          <p class="hint" id="rr" style="margin:8px 0 0"></p>
-        </fieldset>
-
-        <fieldset>
-          <legend>Note</legend>
-          <label class="f"><input name="note" placeholder="Optional"></label>
-        </fieldset>
-
-        <fieldset>
-          <legend>Send to</legend>
+        <details class="sendbox">
+          <summary>Send to accounts <small>(arrives in step 3)</small></summary>
           <div id="sendTo"></div>
-          <p class="hint" style="margin:8px 0 0">Sending to accounts arrives in step 3. For now an order is saved as a draft. Check your prop firm's rules before sending one trade to several of its accounts.</p>
-        </fieldset>
+          <p class="hint" style="margin:8px 0 0">For now an order is saved as a draft. Check your prop firm's rules before sending one trade to several of its accounts.</p>
+        </details>
+
         <p class="msg err" id="oMsg"></p>
-        <div class="formfoot">
+        <div class="formfoot sticky">
           <button class="btn primary" type="submit">Save draft</button>
           <button class="btn" type="button" disabled title="Coming in step 3">Review &amp; send</button>
         </div>

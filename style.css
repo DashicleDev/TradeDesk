@@ -113,3 +113,34 @@ details.acc[open]>summary::after{content:"▴"}
 .segs label,.sidebtns label{position:relative}
 .sheet-inner{min-width:0}.stepper input{min-width:0}
 main{grid-template-columns:minmax(0,1fr)}
+
+/* order ticket v2: compact row list like cTrader's Place order */
+#orderSheet .sheet-inner{width:min(100%,520px);padding:16px 16px 0}
+.tk .formhead{margin-bottom:12px}
+.segs.full{display:flex;width:100%}.segs.full label{flex:1}.segs.full span{text-align:center;padding:8px}
+.pairrow{display:block}
+.pairrow input{font:600 18px var(--body);padding:12px 14px;margin:14px 0 10px;letter-spacing:.02em}
+.tk .sidebtns{margin:0 0 8px}
+#liveLine{margin:0 0 4px;font:500 12px var(--mono);color:var(--muted)}
+#liveLine::before{content:"●";margin-right:6px}
+#liveLine.live-ok{color:var(--good)}#liveLine.sim{color:var(--live)}#liveLine.warn{color:var(--bad)}
+.lines{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:12px 0;padding:0 14px}
+.line,.subline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;min-height:52px;border-bottom:1px solid var(--line);cursor:default}
+.lines>:last-child{border-bottom:0}
+.subline{padding:6px 0 6px 16px;min-height:44px}
+.lt{font-weight:600;display:flex;flex-direction:column;gap:2px;min-width:0}
+.lt .fh{font-weight:400}
+.line>input,.subline>input{width:150px;text-align:right;font-family:var(--mono)}
+.line>input.wideinput{width:min(260px,60%);font-family:var(--body)}
+.line .stepper{width:240px;flex:none}.line .stepper input{text-align:right;font-family:var(--mono)}
+.sw input{appearance:none;-webkit-appearance:none;width:46px;height:28px;padding:0;border:0;border-radius:99px;background:var(--line);position:relative;cursor:pointer;margin:0;transition:background .15s}
+.sw input::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw input:checked{background:var(--good)}.sw input:checked::after{transform:translateX(18px)}
+.sendbox{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:0 14px;margin-bottom:12px}
+.sendbox>summary{cursor:pointer;font-weight:600;padding:14px 0;list-style:none}
+.sendbox>summary::-webkit-details-marker{display:none}
+.sendbox>summary small{font-weight:400;color:var(--muted)}
+.sendbox[open]{padding-bottom:12px}
+.formfoot.sticky{position:sticky;bottom:0;background:var(--paper);padding:12px 0 16px;margin-top:8px;border-top:1px solid var(--line)}
+.formfoot.sticky .btn{flex:1;padding:12px}
+@media (max-width:480px){.line .stepper{width:200px}.line>input,.subline>input{width:120px}}
