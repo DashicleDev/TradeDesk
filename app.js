@@ -1,4 +1,5 @@
-const sb = supabase.createClient(TD.SUPABASE_URL, TD.SUPABASE_ANON_KEY);
+// shortcut: no cross-tab auth lock. The journal shares this browser session and a stuck lock left the page blank; if both tabs refresh at once supabase tolerates it (refresh-token reuse window).
+const sb = supabase.createClient(TD.SUPABASE_URL, TD.SUPABASE_ANON_KEY, { auth: { lock: async (_n, _t, fn) => await fn() } });
 const $ = id => document.getElementById(id);
 const msg = (t, err) => { $("msg").textContent = t || ""; $("msg").className = err ? "err" : ""; };
 const redirectUri = location.origin + location.pathname;
