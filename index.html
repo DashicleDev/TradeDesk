@@ -45,9 +45,14 @@
         <div class="tbl"><table><thead><tr><th>Account</th><th>Type</th><th class="r">Balance</th><th class="r">Equity</th><th class="r">Open trades</th><th class="r">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
       </div>
       <div class="panel" style="margin-top:20px">
-        <h2>Active orders</h2>
-        <p class="hint">Open trades and pending orders at the broker, all accounts in one list. Details for real cTrader accounts arrive with step 3; mock accounts show samples.</p>
-        <div class="tbl"><table><thead><tr><th>Account</th><th>Pair</th><th>Side</th><th>Status</th><th class="r">Lots</th><th class="r">Price</th><th class="r">SL</th><th class="r">TP</th></tr></thead><tbody id="activeRows"></tbody></table></div>
+        <h2>Positions</h2>
+        <p class="hint">Trades that are open right now, all accounts in one list. Details for real cTrader accounts arrive with step 3.</p>
+        <div class="tbl"><table><thead><tr><th>Account</th><th>Pair</th><th>Side</th><th class="r">Lots</th><th class="r">Open price</th><th class="r">SL</th><th class="r">TP</th></tr></thead><tbody id="posRows"></tbody></table></div>
+      </div>
+      <div class="panel" style="margin-top:20px">
+        <h2>Orders</h2>
+        <p class="hint">Pending orders waiting at the broker to fill. Sent from Desk, they stay there if you close the page.</p>
+        <div class="tbl"><table><thead><tr><th>Account</th><th>Pair</th><th>Side</th><th class="r">Lots</th><th class="r">Entry price</th><th class="r">SL</th><th class="r">TP</th></tr></thead><tbody id="ordRows"></tbody></table></div>
       </div>
       <div class="panel" style="margin-top:20px">
         <h2>Drafts</h2>
