@@ -164,3 +164,14 @@ main{grid-template-columns:minmax(0,1fr)}
 .sctl select{flex:1;min-width:0;padding:6px 8px;font-size:14px}
 .slots{font:600 13px var(--mono);text-align:right;max-width:48%;color:var(--muted)}
 .slots.ok{color:var(--good)}.slots.warn{color:var(--bad)}
+
+/* account cards: the whole card is the control */
+.srow{display:none}
+.scard{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:grid;gap:10px;cursor:pointer;background:var(--paper);transition:border-color .12s,background .12s}
+.scard:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+.scard.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--paper))}
+.scard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.scard .shead{display:flex;align-items:center;gap:10px;font-weight:600}
+.scard .sctl{padding-left:0}
+.slots.big{font:700 22px var(--mono);color:var(--good);max-width:none}
+.slots.big{line-height:1}

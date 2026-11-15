@@ -191,13 +191,14 @@ function lotsFor(a, tpl, lots) {
     v = Math.floor(Math.min(v, q.max_lots) / q.step_lots + 1e-9) * q.step_lots;
     if (v < q.min_lots - 1e-12) return { text: "below the broker minimum: skipped", cls: "warn" };
   }
-  return { text: fmtLots(v) + " lots", cls: "ok" };
+  return { text: fmtLots(v) + " lots", cls: "ok big" };
 }
 function updateSend() {
   const lots = num(oe.lots.value);
   let n = 0;
   for (const r of TK.rows) {
-    const on = r.cb.checked; n += on ? 1 : 0;
+    const on = TK.sel.has(r.a.id); n += on ? 1 : 0;
+    r.row.classList.toggle("on", on); r.row.setAttribute("aria-checked", on);
     const out = on ? lotsFor(r.a, templates.find((x) => x.id === r.sel.value), lots) : { text: "", cls: "" };
     r.res.textContent = out.text; r.res.className = "slots " + out.cls;
   }
@@ -208,16 +209,21 @@ function renderSendTo() {
   TK.rows = [];
   if (!ACCTS.length) { $("sendTo").replaceChildren(h("p", { className: "hint", textContent: "No accounts linked yet." })); return updateSend(); }
   $("sendTo").replaceChildren(...ACCTS.map((a) => {
-    const cb = h("input", { type: "checkbox", checked: TK.sel.has(a.id), onchange: () => { cb.checked ? TK.sel.add(a.id) : TK.sel.delete(a.id); updateSend(); } });
     const sel = h("select", { onchange: () => { TK.tpl[a.id] = sel.value; updateSend(); } },
       h("option", { value: "", textContent: "No template" }), ...templates.map((x) => h("option", { value: x.id, textContent: x.name })));
     sel.setAttribute("aria-label", "Template for " + a.label);
     sel.value = TK.tpl[a.id] ?? a.default_template_id ?? "";
     const res = h("span", { className: "slots" });
-    TK.rows.push({ a, cb, sel, res });
-    return h("div", { className: "srow" },
-      h("label", { className: "shead" }, cb, h("span", { className: "sname", textContent: a.label }), h("span", { className: "pill " + (a.is_live ? "warn" : "ok"), textContent: a.is_live ? "live" : "demo" })),
+    // the whole card is the control: tap to select, it lights up; the template picker inside does not toggle it
+    const row = h("div", { className: "scard", tabIndex: 0 },
+      h("div", { className: "shead" }, h("span", { className: "sname", textContent: a.label }), h("span", { className: "pill " + (a.is_live ? "warn" : "ok"), textContent: a.is_live ? "live" : "demo" })),
       h("div", { className: "sctl" }, sel, res));
+    row.setAttribute("role", "checkbox");
+    const toggle = () => { TK.sel.has(a.id) ? TK.sel.delete(a.id) : TK.sel.add(a.id); updateSend(); };
+    row.onclick = (e) => { if (!e.target.closest("select")) toggle(); };
+    row.onkeydown = (e) => { if (e.target === row && (e.key === " " || e.key === "Enter")) { e.preventDefault(); toggle(); } };
+    TK.rows.push({ a, row, sel, res });
+    return row;
   }));
   updateSend();
 }
