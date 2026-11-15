@@ -150,6 +150,13 @@ tables.td_orders.push(draft({ id: "ord-55555555-eeee", user_id: "other" }));
 err = await call({ action: "review", order_id: "ord-55555555-eeee" });
 assert.match(err.error, /not found/);
 
+// 7b. a JPY cross sized by risk: EURJPY is valued through USDJPY (mock prices: EURJPY ~173.5, USDJPY ~159.84)
+tables.td_orders.push(draft({ id: "ord-77777777-gggg", symbol: "EURJPY", entry: 174.5, entry_ref: 173.5, sl: 174.8, tp: 174.0, targets: [{ account_id: "acc-aaaaaaaa", template_id: "t-risk" }] }));
+const rv7 = await call({ action: "review", order_id: "ord-77777777-gggg" });
+assert.equal(rv7.rows[0].ok, true, rv7.rows[0].reason);
+assert.ok(rv7.rows[0].lots > 4 && rv7.rows[0].lots < 8, "cross lots " + rv7.rows[0].lots);   // 1000 / (30 pips x ~$6.26)
+assert.ok(rv7.rows[0].riskPct > 0.9 && rv7.rows[0].riskPct <= 1.0001, "cross risk " + rv7.rows[0].riskPct);
+
 // 8. the symbol list for the picker: with only mock accounts it is the simulated set
 const sy = await call({ action: "symbols" });
 assert.equal(sy.simulated, true);

@@ -57,7 +57,7 @@
       <div class="panel" style="margin-top:20px">
         <h2>Drafts</h2>
         <p class="hint">Orders you saved but haven't sent. Create one with the + button.</p>
-        <div class="tbl"><table><thead><tr><th>Pair</th><th>Side</th><th>Type</th><th class="r">Lots</th><th class="r">Entry</th><th class="r">SL</th><th class="r">TP</th><th>Accounts</th><th>Note</th><th></th></tr></thead><tbody id="draftRows"></tbody></table></div>
+        <div class="tbl"><table><thead><tr><th>Pair</th><th>Side</th><th>Type</th><th class="r">Lots</th><th class="r">Entry</th><th class="r">SL</th><th class="r">TP</th><th>Accounts</th><th>Note</th></tr></thead><tbody id="draftRows"></tbody></table></div>
       </div>
       <div class="panel" style="margin-top:20px">
         <h2>Send log</h2>
@@ -162,7 +162,7 @@
         <p class="msg" id="liveLine" style="display:block">Choose a symbol to see its live price.</p>
 
         <div class="lines">
-          <label class="line"><span class="lt">Quantity (lots)</span><input name="lots" type="number" step="any" min="0" placeholder="0.00" required></label>
+          <div class="line"><span class="lt">Quantity (lots)<button type="button" class="autobtn" id="lotAuto"></button></span><input name="lots" type="number" step="any" min="0" placeholder="0.00" required></div>
           <div class="line"><span class="lt">Entry price<small class="fh" id="dist"></small></span>
             <div class="stepper"><input name="entry" type="number" step="any" required><button type="button" class="btn small" id="entryDown" aria-label="Down one pip">−</button><button type="button" class="btn small" id="entryUp" aria-label="Up one pip">+</button></div></div>
 
@@ -170,12 +170,14 @@
           <div id="tpBox" hidden>
             <div class="subline"><span class="lt">Pips</span><div class="nudge" data-leg="tp" data-field="pips"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="tp_pips" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
             <div class="subline"><span class="lt">Price</span><div class="nudge" data-leg="tp" data-field="price"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="tp" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
+            <p class="gross" id="tpGross"></p>
           </div>
 
-          <div class="line"><span class="lt">Stop loss<small class="fh" id="rr"></small></span><label class="sw"><input type="checkbox" name="sl_on" aria-label="Stop loss"></label></div>
+          <div class="line"><span class="lt">Stop loss</span><label class="sw"><input type="checkbox" name="sl_on" aria-label="Stop loss"></label></div>
           <div id="slBox" hidden>
             <div class="subline"><span class="lt">Pips</span><div class="nudge" data-leg="sl" data-field="pips"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="sl_pips" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
             <div class="subline"><span class="lt">Price</span><div class="nudge" data-leg="sl" data-field="price"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="sl" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
+            <p class="gross" id="slGross"></p>
           </div>
         </div>
 
@@ -183,6 +185,8 @@
           <summary>More</summary>
           <div class="lines">
             <label class="line"><span class="lt">Pip size<small class="fh" id="pipHint"></small></span><input name="pip" type="number" step="any" min="0" value="0.0001"></label>
+            <label class="line"><span class="lt">Risk per trade (%)<small class="fh">Auto quantity uses this</small></span><input name="risk_pct" type="number" step="any" min="0" max="100"></label>
+            <label class="line"><span class="lt">Preset balance<small class="fh">The account size Auto is worked out for</small></span><input name="ref_balance" type="number" step="any" min="0"></label>
             <div class="line"><span class="lt">Expiry</span><label class="sw"><input type="checkbox" name="exp_on" aria-label="Expiry"></label></div>
             <div id="expBox" hidden><label class="subline"><span class="lt">Cancel the order at</span><input name="expires" type="datetime-local"></label></div>
             <label class="line"><span class="lt">Note</span><input name="note" class="wideinput" placeholder="Optional"></label>
@@ -204,6 +208,7 @@
         <div class="formfoot sticky">
           <button class="btn primary" type="button" id="reviewBtn">Review &amp; send</button>
           <button class="btn" type="submit">Save draft</button>
+          <button class="btn ghost danger" type="button" id="delDraft" hidden>Delete</button>
         </div>
       </form>
     </div>

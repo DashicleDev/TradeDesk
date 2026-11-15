@@ -5,15 +5,27 @@
 // order:   { side: "buy"|"sell", lots, entry, entry_ref, sl, tp, expires_at }   (the order type is derived here, not read from the order)
 // tpl:     a td_templates row
 // sym:     { digits, pip_size, min_lots, step_lots, max_lots, bid, ask }
-// ctx:     { balance, currency, openCount }  (the account's current state)
+// ctx:     { balance, currency, openCount, conv }  (the account's current state; conv = the cross's conversion pair price, if any)
 
-// Pip value in USD per 1 lot. Only for pairs containing USD on a USD account, with a standard contract
-// (100,000 units, gold 100 oz). shortcut: anything else is refused, not guessed; broker conversion rates are a later step.
-export function pipValueUsd(symbol, sym, currency) {
+// Which pair converts a cross's quote currency to USD: GBPUSD, AUDUSD, NZDUSD, EURUSD are quoted "currency per USD" the direct way,
+// USDJPY, USDCHF, USDCAD the inverse way. Null when no conversion is needed or the quote currency is not one of these.
+export function conversionPair(symbol) {
+  if (!/^[A-Z]{6}$/.test(symbol) || symbol.endsWith("USD") || symbol.startsWith("USD")) return null;
+  const q = symbol.slice(3);
+  if (["GBP", "AUD", "NZD", "EUR"].includes(q)) return { symbol: q + "USD", direct: true };
+  if (["JPY", "CHF", "CAD"].includes(q)) return { symbol: "USD" + q, direct: false };
+  return null;
+}
+
+// Pip value in USD per 1 lot, for a USD account and a standard contract (100,000 units, gold 100 oz). Pairs with USD need no
+// conversion; a cross uses `conv` ({ bid, ask, direct } of its conversion pair). shortcut: anything else is refused, not guessed;
+// the broker's own conversion (asset rates) is a later step.
+export function pipValueUsd(symbol, sym, currency, conv) {
   if (currency !== "USD") return null;
   const pipUnits = (symbol.startsWith("XAU") ? 100 : 100000) * sym.pip_size;
   if (symbol.endsWith("USD")) return pipUnits;
   if (symbol.startsWith("USD")) return pipUnits / ((sym.bid + sym.ask) / 2);
+  if (conv) { const m = (conv.bid + conv.ask) / 2; return conv.direct ? pipUnits * m : pipUnits / m; }
   return null;
 }
 
@@ -60,7 +72,7 @@ export function plan({ symbol, account, order, tpl, sym, ctx, now = Date.now() }
   if (tp.bad) return block("the take profit adjustment leaves no distance");
 
   const riskMode = tpl.lot_mode === "risk_pct" || tpl.lot_mode === "balance_pct";
-  const pv = pipValueUsd(symbol, sym, ctx.currency);
+  const pv = pipValueUsd(symbol, sym, ctx.currency, ctx.conv);
 
   // lots
   let lots;

@@ -1,6 +1,6 @@
 // Run: node supabase/functions/ctrader/plan.test.mjs
 import assert from "node:assert/strict";
-import { plan, pipValueUsd } from "./plan.mjs";
+import { plan, pipValueUsd, conversionPair } from "./plan.mjs";
 
 const usdjpy = { digits: 3, pip_size: 0.01, min_lots: 0.01, step_lots: 0.01, max_lots: 100, bid: 159.834, ask: 159.846 };
 const eurusd = { digits: 5, pip_size: 0.0001, min_lots: 0.01, step_lots: 0.01, max_lots: 100, bid: 1.08499, ask: 1.08511 };
@@ -19,7 +19,7 @@ assert.ok(r.riskPct <= 1.0001 && r.riskPct > 0.9, "risk % " + r.riskPct);
 
 // EURUSD: a pip is $10
 assert.equal(pipValueUsd("EURUSD", eurusd, "USD"), 10);
-assert.equal(pipValueUsd("EURJPY", usdjpy, "USD"), null);   // cross: refused, not guessed
+assert.equal(pipValueUsd("EURJPY", usdjpy, "USD"), null);   // cross without a conversion price: refused, not guessed
 assert.equal(pipValueUsd("EURUSD", eurusd, "EUR"), null);   // non-USD account: refused
 
 // live account, no template, wrong side of the market
@@ -94,5 +94,24 @@ assert.match(run({ order: st, tpl: fixedTpl, sym: { ...usdjpy, bid: 159.65, ask:
 // without a reference price the old rule holds: judged against the market now, never converted
 r = run({ order: { ...order, entry: 159.7, sl: 159.9, tp: 159.4 }, tpl: fixedTpl });
 assert.equal(r.orderType, "stop"); assert.equal(r.converted, false);
+
+// ---- crosses: the quote currency is converted to USD with its own pair
+assert.deepEqual(conversionPair("EURJPY"), { symbol: "USDJPY", direct: false });
+assert.deepEqual(conversionPair("GBPCHF"), { symbol: "USDCHF", direct: false });
+assert.deepEqual(conversionPair("EURGBP"), { symbol: "GBPUSD", direct: true });
+assert.deepEqual(conversionPair("AUDNZD"), { symbol: "NZDUSD", direct: true });
+assert.equal(conversionPair("EURUSD"), null); assert.equal(conversionPair("USDJPY"), null); assert.equal(conversionPair("XAUUSD"), null);
+const eurjpy = { digits: 3, pip_size: 0.01, min_lots: 0.01, step_lots: 0.01, max_lots: 100, bid: 173.4, ask: 173.412 };
+const usdjpyConv = { bid: 159.834, ask: 159.846, direct: false };
+// EURJPY: 1,000 JPY a pip per lot, / 159.84 = $6.256
+assert.ok(Math.abs(pipValueUsd("EURJPY", eurjpy, "USD", usdjpyConv) - 1000 / 159.84) < 1e-9);
+// EURGBP: 10 GBP a pip per lot x GBPUSD 1.275 = $12.75
+assert.ok(Math.abs(pipValueUsd("EURGBP", { ...eurusd, pip_size: 0.0001 }, "USD", { bid: 1.2749, ask: 1.2751, direct: true }) - 12.75) < 1e-9);
+// a risk-sized EURJPY order now works with the conversion, and is refused without it
+const jOrder = { side: "sell", lots: 5, entry: 173.6, entry_ref: 173.4, sl: 173.9, tp: 173.0 }; // 30 pip stop
+r = plan({ symbol: "EURJPY", account: demo(), order: jOrder, tpl: tpl(), sym: eurjpy, ctx: { ...ctx, conv: usdjpyConv } });
+assert.equal(r.ok, true, r.reason);
+assert.ok(Math.abs(r.lots - Math.floor(1000 / (30 * (1000 / 159.84)) * 100) / 100) < 1e-9, "cross lots " + r.lots);
+assert.match(plan({ symbol: "EURJPY", account: demo(), order: jOrder, tpl: tpl(), sym: eurjpy, ctx }).reason, /pip value/);
 
 console.log("plan tests passed");

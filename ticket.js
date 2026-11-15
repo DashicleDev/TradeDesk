@@ -3,7 +3,7 @@
 const sheet = $("orderSheet");
 const oe = $("orderForm").elements;
 const POLL_MS = 4000;
-const TK = { baseline: null, editing: null, entryTouched: false, quote: null, simulated: false, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, pipTouched: false };
+const TK = { autoLots: true, baseline: null, editing: null, entryTouched: false, quote: null, simulated: false, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, pipTouched: false };
 
 const side = () => oe.side.value; // "buy" | "sell" | "" until chosen
 const pip = () => num(oe.pip.value);
@@ -69,15 +69,7 @@ function pipsBetween(symbol, a, b) {
   const p = Math.abs(a - b) / guessPip(String(symbol));
   return String(Math.round(p * 10) / 10);
 }
-function updateRR() {
-  const s = oe.sl_on.checked ? Math.abs(num(oe.sl_pips.value)) : 0, t = oe.tp_on.checked ? Math.abs(num(oe.tp_pips.value)) : 0; // a minus sign (as TradingView shows a stop) only marks the direction
-  const parts = [];
-  if (s > 0) parts.push("Risk " + s + " pips");
-  if (t > 0) parts.push("Reward " + t + " pips");
-  if (s > 0 && t > 0) parts.push((t / s).toFixed(2) + " : 1");
-  $("rr").textContent = parts.join(" \u00b7 ");
-}
-const updateAll = () => { updateEntry(); syncLeg("sl"); syncLeg("tp"); updateRR(); updateSend(); };
+const updateAll = () => { updateEntry(); syncLeg("sl"); syncLeg("tp"); autoLots(); updateMoney(); updateSend(); };
 
 for (const k of ["sl", "tp"]) {
   oe[k + "_on"].onchange = () => { TK.src[k] = "pips"; if (oe[k + "_on"].checked && oe[k + "_pips"].value === "") oe[k + "_pips"].value = "10"; updateAll(); }; // start at 10 pips so the buttons have something to move
@@ -110,7 +102,7 @@ function applyQuote(q, simulated, account) {
   const spread = ((q.ask - q.bid) / q.pip_size).toFixed(1);
   const t = new Date().toLocaleTimeString();
   setLive(simulated ? `Simulated price (no cTrader account linked yet) · spread ${spread} pips · ${t}` : `Live price from ${account} · spread ${spread} pips · ${t}`, simulated ? "sim" : "live-ok");
-  showPrices(); defaultEntry(); updateAll();
+  showPrices(); defaultEntry(); updateAll(); ensureConv();
 }
 function noQuote(text) {
   TK.quote = null; showPrices();
@@ -147,9 +139,9 @@ oe.symbol.oninput = () => {
 
 // ---- open / close / save
 function openSheet() {
-  TK.editing = null; TK.baseline = null; $("oTitle").textContent = "New order"; $("orderForm").querySelector("button[type=submit]").textContent = "Save draft";
+  $("delDraft").hidden = true; TK.autoLots = true; TK.editing = null; TK.baseline = null; $("oTitle").textContent = "New order"; $("orderForm").querySelector("button[type=submit]").textContent = "Save draft";
   $("oMsg").textContent = "";
-  $("orderForm").reset(); oe.symbol.value = ""; // a hidden field keeps its value through reset()
+  $("orderForm").reset(); oe.symbol.value = ""; oe.risk_pct.value = PREFS.risk_pct; oe.ref_balance.value = PREFS.ref_balance; // a hidden field keeps its value through reset()
   TK.quote = null; TK.src.sl = TK.src.tp = "pips"; TK.pipTouched = false; TK.entryTouched = false;
   oe.pip.value = "0.0001"; oe.lots.removeAttribute("min"); oe.lots.step = "any"; $("lotHint").textContent = ""; $("pipHint").textContent = "1 pip. Taken from the broker once a price is live.";
   ["sl", "tp", "exp"].forEach((k) => ($((k === "exp" ? "exp" : k) + "Box").hidden = true));
@@ -217,10 +209,31 @@ TK.sel = new Set(); TK.tpl = {}; TK.rows = []; // selected account ids; template
 const fmtLots = (v) => String(Math.round(v * 1e4) / 1e4);
 // Pip value in USD per lot, from the live price. Only for pairs with USD in them, and it assumes a USD account and a standard
 // contract (100,000 units, gold 100 oz). shortcut: an estimate for the preview; the real figure comes from the broker at step 3.
+// A cross's pip is valued through its USD pair (same table as the function, plan.mjs): EURJPY via USDJPY, EURGBP via GBPUSD.
+function conversionPairFor(symbol) {
+  if (!/^[A-Z]{6}$/.test(symbol) || symbol.endsWith("USD") || symbol.startsWith("USD")) return null;
+  const q = symbol.slice(3);
+  if (["GBP", "AUD", "NZD", "EUR"].includes(q)) return { symbol: q + "USD", direct: true };
+  if (["JPY", "CHF", "CAD"].includes(q)) return { symbol: "USD" + q, direct: false };
+  return null;
+}
+let CONV = { symbol: null, direct: false, bid: 0, ask: 0, at: 0 };
+async function ensureConv() { // the conversion pair's price, refreshed at most every 15 s while the ticket is open
+  const cp = conversionPairFor(oe.symbol.value.trim().toUpperCase());
+  if (!cp || (CONV.symbol === cp.symbol && Date.now() - CONV.at < 15000)) return;
+  try {
+    const r = await call("quote", { symbol: cp.symbol });
+    CONV = { symbol: cp.symbol, direct: cp.direct, bid: r.quote.bid, ask: r.quote.ask, at: Date.now() };
+    updateAll();
+  } catch { /* no conversion price: the estimates stay blank, the server will say why */ }
+}
+// Pip value in USD per 1 lot (an estimate: a USD account and a standard contract, 100,000 units, gold 100 oz).
 function pipValueUsd(sym, q) {
   const pipUnits = (sym.startsWith("XAU") ? 100 : 100000) * q.pip_size;
   if (sym.endsWith("USD")) return pipUnits;
   if (sym.startsWith("USD")) return pipUnits / ((q.bid + q.ask) / 2);
+  const cp = conversionPairFor(sym);
+  if (cp && CONV.symbol === cp.symbol && CONV.bid) { const m = (CONV.bid + CONV.ask) / 2; return cp.direct ? pipUnits * m : pipUnits / m; }
   return null;
 }
 function lotsFor(a, tpl, lots) {
@@ -290,12 +303,12 @@ function renderSendTo() {
 }
 $("selAll").onclick = () => { ACCTS.forEach((a) => TK.sel.add(a.id)); renderSendTo(); };
 $("selNone").onclick = () => { TK.sel.clear(); renderSendTo(); };
-oe.lots.oninput = updateSend;
+oe.lots.oninput = () => { TK.autoLots = false; updateAll(); }; // typing a quantity is manual from then on
 
 // Edit a saved draft: the same ticket, filled in. Prices are what is stored, so SL/TP open as prices and the pips follow.
 function openOrder(dr) {
   openSheet();
-  TK.editing = dr.id;
+  $("delDraft").hidden = false; TK.editing = dr.id; TK.autoLots = false; // a saved draft keeps its own quantity
   TK.baseline = { entry: dr.entry, side: dr.side, symbol: dr.symbol, ref: dr.entry_ref ?? null };
   $("oTitle").textContent = "Edit draft";
   $("orderForm").querySelector("button[type=submit]").textContent = "Save changes";
@@ -314,4 +327,66 @@ function openOrder(dr) {
   renderSendTo();
   if (targets.length) document.querySelector(".sendbox").open = true;
   oe.symbol.oninput(); // pip size guess, live price, recalculate everything
+}
+
+// ---- Auto quantity: lots = preset balance x risk % / (stop in pips x pip value). Fills the Quantity box; typing there makes it manual.
+// The same number is what Scale-to-account-size templates scale from. Needs a stop, a live price and a USD pair (an estimate: see pipValueUsd).
+let PREFS = { risk_pct: 1, ref_balance: 100000 };
+async function loadPrefs() {
+  const { data } = await sb.from("td_prefs").select("risk_pct,ref_balance").maybeSingle();
+  if (data) PREFS = { risk_pct: Number(data.risk_pct), ref_balance: Number(data.ref_balance) };
+}
+let prefTimer;
+function savePrefs() { // after a short pause, so typing a number does not save on every key
+  clearTimeout(prefTimer);
+  prefTimer = setTimeout(async () => {
+    const row = { risk_pct: PREFS.risk_pct, ref_balance: PREFS.ref_balance, updated_at: new Date().toISOString() };
+    const { data } = await sb.from("td_prefs").select("user_id").maybeSingle();
+    const { error } = data ? await sb.from("td_prefs").update(row).eq("user_id", data.user_id) : await sb.from("td_prefs").insert(row);
+    if (error) msg(error.message, true);
+  }, 600);
+}
+function autoLots() {
+  const b = $("lotAuto"), base = PREFS.risk_pct + "% of " + PREFS.ref_balance.toLocaleString();
+  if (!TK.autoLots) { b.textContent = "Manual \u00b7 use auto (" + base + ")"; return; }
+  const slPips = oe.sl_on.checked ? Math.abs(num(oe.sl_pips.value) ?? 0) : 0;
+  if (!slPips) { b.textContent = "Auto \u00b7 switch on a stop loss (" + base + ")"; return; }
+  const q = TK.quote, sym = oe.symbol.value.trim().toUpperCase();
+  if (!q || !sym) { b.textContent = "Auto \u00b7 waiting for the live price"; return; }
+  const pv = pipValueUsd(sym, q);
+  if (!pv) { b.textContent = conversionPairFor(sym) ? "Auto · waiting for the USD conversion price" : "Auto can't value this pair: type the lots"; return; }
+  const lots = Math.floor((PREFS.ref_balance * PREFS.risk_pct / 100 / (slPips * pv)) / q.step_lots + 1e-9) * q.step_lots;
+  oe.lots.value = String(Number(lots.toFixed(8)));
+  b.textContent = "Auto \u00b7 " + base + " at a " + slPips + "-pip stop (tap to type)";
+}
+$("lotAuto").onclick = () => { TK.autoLots = !TK.autoLots; updateAll(); };
+oe.risk_pct.oninput = oe.ref_balance.oninput = () => {
+  const r = num(oe.risk_pct.value), bal = num(oe.ref_balance.value);
+  if (r > 0 && r <= 100) PREFS.risk_pct = r;
+  if (bal > 0) PREFS.ref_balance = bal;
+  savePrefs(); updateAll();
+};
+
+// Delete lives inside the opened draft (the draft list itself has no buttons)
+$("delDraft").onclick = async () => {
+  if (!TK.editing || !confirm("Delete this draft?")) return;
+  const { error } = await sb.from("td_orders").delete().eq("id", TK.editing);
+  if (error) { $("oMsg").textContent = error.message; return; }
+  sheet.hidden = true; loadDrafts();
+};
+
+// Money at stake for the quantity in the box, like cTrader's "Gross profit: ~ $277.36": quantity x pips x pip value, and its share of the
+// preset balance. An estimate (USD pairs on a USD account, see pipValueUsd); blank when it cannot be worked out.
+function updateMoney() {
+  const lots = num(oe.lots.value), q = TK.quote, sym = oe.symbol.value.trim().toUpperCase();
+  const pv = q && sym ? pipValueUsd(sym, q) : null;
+  for (const [k, word, cls] of [["tp", "Gross profit", "good"], ["sl", "Gross loss", "bad"]]) {
+    const el = $(k + "Gross");
+    const pips = oe[k + "_on"].checked ? Math.abs(num(oe[k + "_pips"].value) ?? 0) : 0;
+    if (!pips || !lots || !pv) { el.textContent = ""; el.className = "gross"; continue; }
+    const amt = lots * pips * pv;
+    el.className = "gross " + cls;
+    el.textContent = word + ": ~ " + (k === "sl" ? "−" : "") + "$" + amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      + " · ~" + (amt / PREFS.ref_balance * 100).toFixed(2) + "% of " + PREFS.ref_balance.toLocaleString();
+  }
 }

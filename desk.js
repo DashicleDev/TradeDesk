@@ -30,11 +30,11 @@ function legCell(o, k) {
 async function loadDrafts() {
   const { data, error } = await sb.from("td_orders").select("*").eq("status", "draft").order("created_at", { ascending: false });
   if (error) return msg(error.message, true);
-  $("draftRows").replaceChildren(...(data.length ? data.map((i) => h("tr", {},
-    cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), cell(i.order_type === "stop" ? "Stop" : "Limit"), numCell(i.lots), numCell(i.entry), legCell(i, "sl"), legCell(i, "tp"), cell((i.targets || []).length ? (i.targets.length + (i.targets.length === 1 ? " account" : " accounts")) : "none"), cell(i.note),
-    h("td", { className: "r" },
-      h("button", { className: "btn small ghost", textContent: "Edit", onclick: () => openOrder(i) }), " ",
-      h("button", { className: "btn small ghost danger", textContent: "Delete", onclick: () => del("td_orders", i.id, loadDrafts) })))) : [emptyRow(10, "No drafts yet. Use the + button.")]));
+  $("draftRows").replaceChildren(...(data.length ? data.map((i) => h("tr", {
+      className: "click", tabIndex: 0, onclick: () => openOrder(i), // tap the row to open it, like the journal
+      onkeydown: (e) => { if (e.key === "Enter") openOrder(i); },
+    },
+    cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), cell(i.order_type === "stop" ? "Stop" : "Limit"), numCell(i.lots), numCell(i.entry), legCell(i, "sl"), legCell(i, "tp"), cell((i.targets || []).length ? (i.targets.length + (i.targets.length === 1 ? " account" : " accounts")) : "none"), cell(i.note))) : [emptyRow(9, "No drafts yet. Use the + button.")]));
 }
 
 
@@ -115,4 +115,4 @@ async function loadAccounts() {
   }));
 }
 
-function loadDesk() { loadDrafts(); loadTemplates(); loadLog(); }
+function loadDesk() { loadPrefs(); loadDrafts(); loadTemplates(); loadLog(); }

@@ -10,7 +10,7 @@
 // VERIFY on the first real run: the wss connection from here; pip size = 10^-pipPosition; the JSON form of the enums used in
 // the new-order request (orderType 2 limit / 3 stop, tradeSide 1 buy / 2 sell, timeInForce 1 GTD / 2 GTC); the asset list field names.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { plan } from "./plan.mjs";
+import { plan, conversionPair } from "./plan.mjs";
 
 const CLIENT_ID = Deno.env.get("CTRADER_CLIENT_ID")!;
 const CLIENT_SECRET = Deno.env.get("CTRADER_CLIENT_SECRET")!;
@@ -229,11 +229,15 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
       // everything that needs the broker happens on one connection, so review and send see the same state
       const work = async (c: any, id: number | null) => {
         let sym: any, ctx: any, info: any = null;
-        if (a.is_mock) { sym = mockQuote(order.symbol); ctx = mockCtx(a); }
-        else {
+        const cp = conversionPair(order.symbol); // a cross needs the price of its USD pair to value a pip in dollars
+        if (a.is_mock) {
+          sym = mockQuote(order.symbol); ctx = mockCtx(a);
+          if (cp) { try { const q = mockQuote(cp.symbol); ctx.conv = { bid: q.bid, ask: q.ask, direct: cp.direct }; } catch { /* no simulated price for it: the plan refuses */ } }
+        } else {
           info = await symbolInfo(c, id!, order.symbol);
           sym = { ...info, ...(await spot(c, id!, info)) };
           ctx = await accountContext(c, id!);
+          if (cp) { try { const ci = await symbolInfo(c, id!, cp.symbol); ctx.conv = { ...(await spot(c, id!, ci)), direct: cp.direct }; } catch { /* the plan refuses without it */ } }
         }
         const p = plan({ symbol: order.symbol, account: a, order, tpl, sym, ctx });
         if (!p.ok) return await blocked(p.reason);
