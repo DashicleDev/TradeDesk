@@ -381,3 +381,5 @@ button,.btn,label,summary,input,select,textarea,a,.scard,tr.click,.symitem,.swat
 .gross{padding-left:0}
 @media (max-width:480px){.legrow .nudge input{width:72px}.legrow .pxin{width:104px}}
 .legrow{flex-direction:row-reverse} /* price on the left, pips with - / + on the right */
+.wfoot{font-size:12px;color:var(--muted);margin-top:2px}
+.wdetail{gap:0}

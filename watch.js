@@ -84,7 +84,7 @@ function watchRow(it) {
       left = "Price " + (it.side === "buy" ? q.bid : q.ask).toFixed(q.digits);
       right = (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips"; cls = pips >= 0 ? "long" : "short";
       detail = positionDetail(it, q, pips);
-      if (detail.total != null) { left = right + " · " + left; right = money(detail.total); }
+      if (detail.total != null) right = money(detail.total);
       detail = detail.el;
     }
   } else {
@@ -101,9 +101,9 @@ function watchRow(it) {
   return h("div", { className: "wrow click", tabIndex: 0, onclick: () => go(it), onkeydown: (e) => { if (e.key === "Enter") go(it); } },
     h("div", { className: "wl" },
       h("div", { className: "wtitle" }, h("b", { textContent: it.symbol }), h("span", { className: it.side === "buy" ? "long" : "short", textContent: it.kind === "position" ? (it.side === "buy" ? "long" : "short") : (it.side === "buy" ? "Buy " : "Sell ") + it.type }), it.ts && it.ts[0].sim ? h("span", { className: "pill", textContent: "sim" }) : ""),
-      h("div", { className: "wsub", textContent: sub }),
-      it.kind === "draft" ? h("div", { className: "chips" }, ...names) : ""),
-    h("div", { className: "wr" }, h("div", { className: "wbig " + cls, textContent: right || "–" }), h("div", { className: "wprice", textContent: left })),
+      it.kind === "draft" ? h("div", { className: "wfoot", textContent: "entry " + it.entry + " · " + it.meta }) : "",
+      ""),
+    h("div", { className: "wr" }, h("div", { className: "wbig " + cls, textContent: right || "–" })),
     detail || "");
 }
 
@@ -111,6 +111,7 @@ const money = (v) => (v < 0 ? "−" : "+") + "$" + Math.abs(v).toLocaleString("e
 
 // Under a running position: how far the price is between the stop loss and the take profit, and each account's running result.
 // Left is always the loss side and right the profit side, for longs and shorts alike.
+const foot = (n, extra) => h("div", { className: "wfoot", textContent: [n + (n === 1 ? " account" : " accounts"), extra].filter(Boolean).join(" · ") });
 const zoneBg = (at, sl, tp) => "background:linear-gradient(to right," + (sl ? "color-mix(in srgb,var(--bad) 55%,transparent)" : "var(--soft)") + " " + at + "%," + (tp ? "color-mix(in srgb,var(--good) 55%,transparent)" : "var(--soft)") + " " + at + "%)";
 const noLegs = (sl, tp) => (sl != null && tp != null ? "" : h("div", { className: "plabels" }, h("span", { textContent: sl == null ? "No stop loss" : "" }), h("span", { textContent: tp == null ? "No take profit" : "" })));
 
@@ -123,7 +124,7 @@ function pendingDetail(it, q) {
   const bar = h("div", { className: "pbar" },
     h("div", { className: "ptrack", style: zoneBg(at, slP != null, tpP != null) },
       h("i", { className: "pentry", style: "left:" + at + "%" }), h("i", { className: "pmark now", style: "left:" + mark + "%" })), noLegs(slP, tpP));
-  return h("div", { className: "wdetail" }, bar, ...it.ts.map((t) => h("div", { className: "pacct" }, h("span", { textContent: t.account.replace(/^MOCK /, "") }), h("span", { className: "muted", textContent: t.lots + " lots" }), h("span", {}))));
+  return h("div", { className: "wdetail" }, bar, foot(it.ts.length));
 }
 
 function positionDetail(it, q, pips) {
@@ -142,7 +143,7 @@ function positionDetail(it, q, pips) {
     return h("div", { className: "pacct" }, h("span", { textContent: t.account.replace(/^MOCK /, "") }), h("span", { className: "muted", textContent: t.lots + " lots" }),
       h("span", { className: "pamt " + (pips >= 0 ? "long" : "short"), textContent: amt != null ? money(amt) : (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips" }));
   });
-  return { total, el: h("div", { className: "wdetail" }, bar, ...rows) };
+  return { total, el: h("div", { className: "wdetail" }, bar, foot(it.ts.length, (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips")) };
 }
 
 function renderWatch() {
