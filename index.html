@@ -153,13 +153,13 @@
           <button type="button" class="btn small ghost closex" data-close>Close</button>
         </div>
 
-        <label class="pairrow"><input name="symbol" list="pairs" placeholder="Pair, e.g. EURUSD" autocapitalize="characters" aria-label="Pair" required></label>
-        <datalist id="pairs"><option value="EURUSD"><option value="GBPUSD"><option value="USDJPY"><option value="GBPJPY"><option value="EURJPY"><option value="AUDUSD"><option value="NZDUSD"><option value="USDCAD"><option value="USDCHF"><option value="XAUUSD"></datalist>
+        <input type="hidden" name="symbol" required>
+        <button type="button" class="symrow" id="symBtn" aria-label="Choose symbol"><span class="lt">Symbol</span><span class="symright"><b class="symval empty" id="symVal">Choose</b><span class="chev">›</span></span></button>
         <div class="sidebtns" role="radiogroup" aria-label="Direction">
           <label class="sell"><input type="radio" name="side" value="sell" required><span>SELL<b id="bidTxt">–</b></span></label>
           <label class="buy"><input type="radio" name="side" value="buy"><span>BUY<b id="askTxt">–</b></span></label>
         </div>
-        <p class="msg" id="liveLine" style="display:block">Type a pair to see its live price.</p>
+        <p class="msg" id="liveLine" style="display:block">Choose a symbol to see its live price.</p>
 
         <div class="lines">
           <label class="line"><span class="lt">Quantity (lots)</span><input name="lots" type="number" step="any" min="0" placeholder="0.00" required></label>
@@ -222,10 +222,20 @@
       </div>
     </div>
   </div>
+  <div class="sheet" id="symSheet" hidden>
+    <div class="scrim" data-close></div>
+    <div class="sheet-inner" role="dialog" aria-modal="true" aria-label="Symbol">
+      <div class="formhead"><button type="button" class="btn small ghost" data-close>‹ Back</button><h3>Symbol</h3></div>
+      <input id="symSearch" type="search" placeholder="Search" autocomplete="off" autocapitalize="characters" aria-label="Search symbols">
+      <p class="hint" id="symNote" style="margin:6px 0"></p>
+      <div id="symList" class="symlist"></div>
+    </div>
+  </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="desk.js"></script>
 <script src="ticket.js"></script>
 <script src="send.js"></script>
+<script src="symbols.js"></script>
 </body></html>

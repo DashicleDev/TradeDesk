@@ -150,5 +150,11 @@ tables.td_orders.push(draft({ id: "ord-55555555-eeee", user_id: "other" }));
 err = await call({ action: "review", order_id: "ord-55555555-eeee" });
 assert.match(err.error, /not found/);
 
+// 8. the symbol list for the picker: with only mock accounts it is the simulated set
+const sy = await call({ action: "symbols" });
+assert.equal(sy.simulated, true);
+assert.ok(sy.symbols.includes("EURUSD") && sy.symbols.includes("USDJPY") && sy.symbols.includes("XAUUSD"));
+assert.deepEqual(sy.symbols, [...sy.symbols].sort(), "sorted");
+
 console.log("function flow tests passed");
 fs.unlinkSync(tmp);

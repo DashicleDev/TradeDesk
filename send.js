@@ -51,6 +51,7 @@ function renderReview() {
 async function startReview() {
   const f = $("orderForm");
   $("oMsg").textContent = "";
+  if (!f.elements.symbol.value.trim()) { $("oMsg").textContent = "Choose a symbol."; return; } // first: a hidden field has no native message
   if (!f.reportValidity()) return;
   if (!TK.sel.size) { $("oMsg").textContent = "Switch on at least one account under Send to accounts."; document.querySelector(".sendbox").open = true; return; }
   const b = $("reviewBtn"); b.disabled = true;

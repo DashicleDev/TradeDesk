@@ -12,7 +12,7 @@ document.querySelectorAll("nav [data-tab]").forEach((b) => (b.onclick = () => {
 }));
 
 document.querySelectorAll(".sheet [data-close]").forEach((b) => (b.onclick = () => (b.closest(".sheet").hidden = true)));
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll(".sheet:not([hidden])").forEach((s) => (s.hidden = true)); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { const open = document.querySelectorAll(".sheet:not([hidden])"); if (open.length) open[open.length - 1].hidden = true; } }); // topmost sheet only
 
 async function del(table, id, reload) {
   if (!confirm("Delete this?")) return;

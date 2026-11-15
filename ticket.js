@@ -132,10 +132,15 @@ async function pollQuote() {
   TK.timer = setTimeout(pollQuote, POLL_MS);
 }
 let symDebounce;
+function syncSymbolRow() {
+  const v = oe.symbol.value.trim();
+  $("symVal").textContent = v || "Choose"; $("symVal").classList.toggle("empty", !v);
+}
 oe.symbol.oninput = () => {
+  syncSymbolRow();
   TK.quote = null; showPrices(); if (!TK.entryTouched) oe.entry.value = "";
   if (!TK.pipTouched) oe.pip.value = guessPip(oe.symbol.value);
-  setLive(oe.symbol.value.trim().length >= 5 ? "Getting the live price…" : "Type a pair to see its live price.");
+  setLive(oe.symbol.value.trim().length >= 5 ? "Getting the live price…" : "Choose a symbol to see its live price.");
   clearTimeout(symDebounce); symDebounce = setTimeout(pollQuote, 400);
   updateAll();
 };
@@ -144,13 +149,13 @@ oe.symbol.oninput = () => {
 function openSheet() {
   TK.editing = null; TK.baseline = null; $("oTitle").textContent = "New order"; $("orderForm").querySelector("button[type=submit]").textContent = "Save draft";
   $("oMsg").textContent = "";
-  $("orderForm").reset();
+  $("orderForm").reset(); oe.symbol.value = ""; // a hidden field keeps its value through reset()
   TK.quote = null; TK.src.sl = TK.src.tp = "pips"; TK.pipTouched = false; TK.entryTouched = false;
   oe.pip.value = "0.0001"; oe.lots.removeAttribute("min"); oe.lots.step = "any"; $("lotHint").textContent = ""; $("pipHint").textContent = "1 pip. Taken from the broker once a price is live.";
   ["sl", "tp", "exp"].forEach((k) => ($((k === "exp" ? "exp" : k) + "Box").hidden = true));
-  showPrices(); setLive("Type a pair to see its live price.");
+  showPrices(); setLive("Choose a symbol to see its live price.");
   TK.sel.clear(); TK.tpl = {}; renderSendTo(); updateAll();
-  sheet.hidden = false; oe.symbol.focus();
+  syncSymbolRow(); sheet.hidden = false; $("symBtn").focus();
 }
 $("fab").onclick = openSheet;
 
@@ -169,6 +174,7 @@ function orderRow() {
 }
 // Insert, or update when editing. After the first save the form is an edit of that draft.
 async function persistDraft() {
+  if (!oe.symbol.value.trim()) return { error: { message: "Choose a symbol." } }; // a hidden field is not covered by the browser's own check
   const row = orderRow();
   TK.baseline = { entry: row.entry, side: row.side, symbol: row.symbol, ref: row.entry_ref };
   if (TK.editing) { const { error } = await sb.from("td_orders").update(row).eq("id", TK.editing); return { error, id: TK.editing }; }

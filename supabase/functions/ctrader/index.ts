@@ -1,5 +1,5 @@
 // Trade Desk Edge Function. Holds the cTrader secret (env) and the tokens (td_tokens); everything that talks to cTrader goes through here.
-// Actions: start, exchange (link), overview, quote, review and send (step 3).
+// Actions: start, exchange (link), overview, quote, symbols, review and send (step 3).
 //
 // Safety rules that live HERE, not in the page:
 //  - send only ever goes to demo accounts (live ones arrive in step 4) and only with a link that has the trading permission;
@@ -155,6 +155,18 @@ async function realQuote(a: any, token: string, sym: string) {
     const px = await spot(c, id, info);
     return { symbol: sym, ...px, digits: info.digits, pip_size: info.pip_size, min_lots: info.min_lots, step_lots: info.step_lots, max_lots: info.max_lots };
   });
+}
+// The broker's symbol names for the picker (enabled ones), cached for 10 minutes per account.
+const listCache = new Map<string, { at: number; names: string[] }>();
+async function brokerSymbols(a: any, token: string) {
+  const hit = listCache.get(a.id);
+  if (hit && Date.now() - hit.at < 600_000) return hit.names;
+  const names = await inAccount(a, token, async (c, id) => {
+    const list = await c.send(T.symbolsListReq, { ctidTraderAccountId: id });
+    return (list.symbol ?? []).filter((s: any) => s.enabled !== false).map((s: any) => String(s.symbolName)).sort();
+  });
+  listCache.set(a.id, { at: Date.now(), names });
+  return names;
 }
 async function accountContext(c: any, id: number) {
   const { trader } = await c.send(T.traderReq, { ctidTraderAccountId: id });
@@ -335,6 +347,13 @@ Deno.serve(async (req) => {
       const a = accts?.[0]; // a demo account first: the price is the broker's either way
       if (!a) return json({ quote: mockQuote(sym), simulated: true });
       return json({ quote: await realQuote(a, await accessToken(uid), sym), simulated: false, account: a.label });
+    }
+
+    if (body.action === "symbols") {
+      const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).eq("is_mock", false).order("is_live").order("created_at").limit(1);
+      const a = accts?.[0];
+      if (!a) return json({ symbols: Object.keys(MOCK).sort(), simulated: true }); // only what the simulated prices cover
+      return json({ symbols: await brokerSymbols(a, await accessToken(uid)), simulated: false, account: a.label });
     }
 
     if (body.action === "review" || body.action === "send") {
