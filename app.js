@@ -39,7 +39,7 @@ async function show(session) {
   if (!session) { $("auth").hidden = false; $("authForm").hidden = false; $("pendBox").hidden = true; $("main").hidden = true; return; }
   const { data: ok } = await sb.rpc("is_approved"); // same approval as the journal
   $("auth").hidden = !!ok; $("authForm").hidden = true; $("pendBox").hidden = !!ok; $("main").hidden = !ok;
-  if (ok) { await handleCallback(); overview(); }
+  if (ok) { loadDesk(); await handleCallback(); overview(); }
 }
 
 let signup = false;

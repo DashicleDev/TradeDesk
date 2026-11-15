@@ -25,9 +25,47 @@
   <h1>Trade <span>Desk</span></h1>
   <div class="bar"><button class="btn primary" id="link">Link cTrader account(s)</button><button class="btn" id="refresh">Refresh</button><button class="btn" id="logout">Sign out</button></div>
   <p class="hint" id="msg"></p>
-  <div class="panel"><table><thead><tr><th>Account</th><th>Type</th><th class="num">Balance</th><th class="num">Equity</th><th class="num">Open trades</th><th class="num">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="tabs"><button class="btn on" data-tab="tOverview">Overview</button><button class="btn" data-tab="tIdeas">Ideas</button><button class="btn" data-tab="tTemplates">Templates</button></div>
+
+  <section id="tOverview">
+    <div class="panel"><table><thead><tr><th>Account</th><th>Type</th><th class="num">Balance</th><th class="num">Equity</th><th class="num">Open trades</th><th class="num">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+
+  <section id="tIdeas" hidden>
+    <form class="panel grid" id="ideaForm">
+      <label class="f"><span>Pair</span><input name="symbol" placeholder="EURUSD" required></label>
+      <label class="f"><span>Side</span><select name="side"><option value="buy">Long</option><option value="sell">Short</option></select></label>
+      <label class="f"><span>Lots</span><input name="lots" type="number" step="any" min="0" required></label>
+      <label class="f"><span>Entry</span><input name="entry" type="number" step="any" required></label>
+      <label class="f"><span>SL</span><input name="sl" type="number" step="any"></label>
+      <label class="f"><span>TP</span><input name="tp" type="number" step="any"></label>
+      <label class="f wide"><span>Note</span><input name="note"></label>
+      <button class="btn primary" type="submit">Save idea</button>
+    </form>
+    <div class="panel"><table><thead><tr><th>Pair</th><th>Side</th><th class="num">Lots</th><th class="num">Entry</th><th class="num">SL</th><th class="num">TP</th><th>Note</th><th></th></tr></thead><tbody id="ideaRows"></tbody></table></div>
+  </section>
+
+  <section id="tTemplates" hidden>
+    <form class="panel grid" id="tplForm">
+      <label class="f"><span>Name</span><input name="name" required></label>
+      <label class="f"><span>Lot size</span><select name="lot_mode"><option value="fixed">Fixed lots</option><option value="risk_pct">% of starting size at risk</option><option value="multiplier">Multiple of idea lots</option></select></label>
+      <label class="f"><span>Value</span><input name="lot_value" type="number" step="any" min="0" required></label>
+      <label class="f"><span>Max open trades</span><input name="max_open" type="number" min="1"></label>
+      <label class="f"><span>Max risk % per account</span><input name="max_risk_pct" type="number" step="any" min="0"></label>
+      <label class="f ck"><input name="copy_sl" type="checkbox" checked><span>Copy SL</span></label>
+      <label class="f ck"><input name="copy_tp" type="checkbox" checked><span>Copy TP</span></label>
+      <label class="f ck"><input name="reverse" type="checkbox"><span>Reverse direction</span></label>
+      <label class="f wide"><span>Symbol mapping (one per line: IDEA=BROKER)</span><textarea name="symbol_map" rows="2" placeholder="XAUUSD=GOLD"></textarea></label>
+      <button class="btn primary" type="submit">Save template</button>
+    </form>
+    <div class="panel"><table><thead><tr><th>Name</th><th>Lots</th><th>Limits</th><th>SL / TP</th><th></th></tr></thead><tbody id="tplRows"></tbody></table></div>
+    <h2>Account defaults</h2>
+    <p class="hint">Each account's default template, and its starting size (used by "% at risk"). You can override the template when sending.</p>
+    <div class="panel"><table><thead><tr><th>Account</th><th>Default template</th><th class="num">Starting size</th></tr></thead><tbody id="accRows"></tbody></table></div>
+  </section>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script src="desk.js"></script>
 </body></html>

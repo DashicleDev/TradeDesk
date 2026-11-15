@@ -64,3 +64,7 @@ Docs: https://help.ctrader.com/open-api/ (overview), /connection/, /proxies-endp
 - **Cancel / amend:** `ProtoOACancelOrderReq` (orderId), `ProtoOAAmendOrderReq` (orderId + changed fields). Both need trade permission.
 - **Money values:** int64 scaled by `moneyDigits` (e.g. 8: 10053099944 = 100.53099944). Account type HEDGED or NETTED (matters for position handling).
 - **Not confirmed:** open-orders/positions request name and equity/PnL fields (look up `ProtoOAReconcileReq` and `ProtoOAGetPositionUnrealizedPnLReq` in /messages/ at build time); Supabase Edge Function limits for outbound WebSockets.
+
+## Build status
+- Step 1 (link accounts + read-only overview): code deployed; real linking untested, waiting on cTrader app approval. Mock accounts (`td_accounts.is_mock`) cover the overview meanwhile.
+- Step 2 (ideas + templates): built, migration `0003` applied. Templates hold lot mode (fixed / % of starting size at risk / multiple), copy-SL/TP, reverse, max open trades, max risk %, symbol map; each account has a default template and a starting size. Not done in step 2: live preview of resulting lots/risk (needs symbol tick/pip data from cTrader, so it belongs with the step 3 confirm screen), news/hours rules (later).
