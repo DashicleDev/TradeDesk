@@ -1,4 +1,4 @@
-# Trade Desk
+# Dashicle Trade Desk
 
 Personal multi-account order ticket and dashboard for cTrader. Static page (GitHub Pages) + Supabase (own tables, one Edge Function). Status: spec only, nothing built. See `SPEC.md`.
 

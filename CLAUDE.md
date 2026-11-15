@@ -1,4 +1,4 @@
-# Trade Desk
+# Dashicle Trade Desk
 
 Personal multi-account order ticket + dashboard on cTrader. Design: `SPEC.md`. Separate from the TradeJournal repo and its extensions; never import from or push to them.
 
