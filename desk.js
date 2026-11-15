@@ -115,4 +115,4 @@ async function loadAccounts() {
   }));
 }
 
-function loadDesk() { loadPrefs(); loadDrafts(); loadTemplates(); loadLog(); }
+function loadDesk() { loadLook(); loadPrefs(); loadDrafts(); loadTemplates(); loadLog(); }

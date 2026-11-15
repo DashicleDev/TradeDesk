@@ -141,7 +141,7 @@ oe.symbol.oninput = () => {
 function openSheet() {
   $("delDraft").hidden = true; TK.autoLots = true; TK.editing = null; TK.baseline = null; $("oTitle").textContent = "New order"; $("orderForm").querySelector("button[type=submit]").textContent = "Save draft";
   $("oMsg").textContent = "";
-  $("orderForm").reset(); oe.symbol.value = ""; oe.risk_pct.value = PREFS.risk_pct; oe.ref_balance.value = PREFS.ref_balance; // a hidden field keeps its value through reset()
+  $("orderForm").reset(); oe.symbol.value = ""; // a hidden field keeps its value through reset()
   TK.quote = null; TK.src.sl = TK.src.tp = "pips"; TK.pipTouched = false; TK.entryTouched = false;
   oe.pip.value = "0.0001"; oe.lots.removeAttribute("min"); oe.lots.step = "any"; $("lotHint").textContent = ""; $("pipHint").textContent = "1 pip. Taken from the broker once a price is live.";
   ["sl", "tp", "exp"].forEach((k) => ($((k === "exp" ? "exp" : k) + "Box").hidden = true));
@@ -335,7 +335,9 @@ let PREFS = { risk_pct: 1, ref_balance: 100000 };
 async function loadPrefs() {
   const { data } = await sb.from("td_prefs").select("risk_pct,ref_balance").maybeSingle();
   if (data) PREFS = { risk_pct: Number(data.risk_pct), ref_balance: Number(data.ref_balance) };
+  showPrefs();
 }
+const showPrefs = () => { $("prefRisk").value = PREFS.risk_pct; $("prefBal").value = PREFS.ref_balance; };
 let prefTimer;
 function savePrefs() { // after a short pause, so typing a number does not save on every key
   clearTimeout(prefTimer);
@@ -343,7 +345,8 @@ function savePrefs() { // after a short pause, so typing a number does not save 
     const row = { risk_pct: PREFS.risk_pct, ref_balance: PREFS.ref_balance, updated_at: new Date().toISOString() };
     const { data } = await sb.from("td_prefs").select("user_id").maybeSingle();
     const { error } = data ? await sb.from("td_prefs").update(row).eq("user_id", data.user_id) : await sb.from("td_prefs").insert(row);
-    if (error) msg(error.message, true);
+    if (error) return msg(error.message, true);
+    toast("Saved to your account");
   }, 600);
 }
 function autoLots() {
@@ -360,8 +363,8 @@ function autoLots() {
   b.textContent = "Auto \u00b7 " + base + " at a " + slPips + "-pip stop (tap to type)";
 }
 $("lotAuto").onclick = () => { TK.autoLots = !TK.autoLots; updateAll(); };
-oe.risk_pct.oninput = oe.ref_balance.oninput = () => {
-  const r = num(oe.risk_pct.value), bal = num(oe.ref_balance.value);
+$("prefRisk").oninput = $("prefBal").oninput = () => {
+  const r = num($("prefRisk").value), bal = num($("prefBal").value);
   if (r > 0 && r <= 100) PREFS.risk_pct = r;
   if (bal > 0) PREFS.ref_balance = bal;
   savePrefs(); updateAll();
@@ -390,3 +393,5 @@ function updateMoney() {
       + " · ~" + (amt / PREFS.ref_balance * 100).toFixed(2) + "% of " + PREFS.ref_balance.toLocaleString();
   }
 }
+
+showPrefs();
