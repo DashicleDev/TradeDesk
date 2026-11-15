@@ -147,6 +147,7 @@ $("orderForm").onsubmit = async (e) => {
     symbol: oe.symbol.value.trim().toUpperCase(), side: side(), order_type: oe.order_type.value, lots: num(oe.lots.value), entry: num(oe.entry.value),
     sl: oe.sl_on.checked ? num(oe.sl.value) : null, tp: oe.tp_on.checked ? num(oe.tp.value) : null,
     expires_at: oe.exp_on.checked && oe.expires.value ? new Date(oe.expires.value).toISOString() : null, note: oe.note.value.trim() || null,
+    targets: TK.rows.filter((r) => TK.sel.has(r.a.id)).map((r) => ({ account_id: r.a.id, template_id: r.sel.value || null })), // ticked accounts and their templates
   };
   const { error } = TK.editing ? await sb.from("td_orders").update(row).eq("id", TK.editing) : await sb.from("td_orders").insert(row);
   // errors go inside the sheet: the page-level message sits behind it
@@ -269,5 +270,10 @@ function openOrder(dr) {
     oe.expires.value = new Date(new Date(dr.expires_at).getTime() - new Date().getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
   }
   oe.note.value = dr.note ?? "";
+  const targets = (dr.targets || []).filter((x) => ACCTS.some((a) => a.id === x.account_id)); // accounts removed since are dropped
+  TK.sel = new Set(targets.map((x) => x.account_id));
+  TK.tpl = Object.fromEntries(targets.map((x) => [x.account_id, x.template_id ?? ""]));
+  renderSendTo();
+  if (targets.length) document.querySelector(".sendbox").open = true;
   oe.symbol.oninput(); // pip size guess, live price, recalculate everything
 }
