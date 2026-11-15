@@ -56,13 +56,16 @@ const go = (it) => (it.kind === "draft" ? openOrder(it.d) : openManage(it));
 function watchRow(it) {
   const sl = pipsOf(it, it.sl), tp = pipsOf(it, it.tp);
   const sub = "entry " + it.entry + (sl ? " \u00b7 SL " + sl : "") + (tp ? " \u00b7 TP " + tp : "") + (sl || tp ? " pips" : "");
-  let left = "No price yet", right = "", cls = "", btns = [];
+  let left = "No price yet", right = "", cls = "", detail = null;
   const q = PX[it.symbol];
   if (it.kind === "position") {
     if (q) { // floating result in pips: a long closes at the bid, a short at the ask
       const pips = (it.side === "buy" ? q.bid - it.entry : it.entry - q.ask) / q.pip_size;
       left = "Price " + (it.side === "buy" ? q.bid : q.ask).toFixed(q.digits);
       right = (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips"; cls = pips >= 0 ? "long" : "short";
+      detail = positionDetail(it, q, pips);
+      if (detail.total != null) { left = right + " · " + left; right = money(detail.total); }
+      detail = detail.el;
     }
   } else {
     const dist = distance(it);
@@ -79,8 +82,32 @@ function watchRow(it) {
       h("div", { className: "wtitle" }, h("b", { textContent: it.symbol }), h("span", { className: it.side === "buy" ? "long" : "short", textContent: it.side === "buy" ? "long" : "short" }),
         h("span", { className: "wtype", textContent: it.kind === "position" ? "" : it.type }), it.ts && it.ts[0].sim ? h("span", { className: "pill", textContent: "sim" }) : ""),
       h("div", { className: "wsub", textContent: sub }),
-      h("div", { className: "chips" }, ...names)),
-    h("div", { className: "wr" }, h("div", { className: "wbig " + cls, textContent: right || "–" }), h("div", { className: "wprice", textContent: left })));
+      it.kind === "position" ? "" : h("div", { className: "chips" }, ...names)),
+    h("div", { className: "wr" }, h("div", { className: "wbig " + cls, textContent: right || "–" }), h("div", { className: "wprice", textContent: left })),
+    detail || "");
+}
+
+const money = (v) => (v < 0 ? "−" : "+") + "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// Under a running position: how far the price is between the stop loss and the take profit, and each account's running result.
+// Left is always the loss side and right the profit side, for longs and shorts alike.
+function positionDetail(it, q, pips) {
+  const slP = it.sl != null ? Math.abs(it.entry - it.sl) / q.pip_size : null, tpP = it.tp != null ? Math.abs(it.tp - it.entry) / q.pip_size : null;
+  const pad = Math.max(10, Math.abs(pips) * 1.3); // no SL or TP set: show a neutral stretch instead
+  const L = slP ?? pad, R = tpP ?? pad, at = (L / (L + R)) * 100;
+  const mark = ((L + Math.max(-L, Math.min(R, pips))) / (L + R)) * 100;
+  const bar = h("div", { className: "pbar" },
+    h("div", { className: "ptrack", style: "background:linear-gradient(to right,color-mix(in srgb,var(--bad) 55%,transparent) " + at + "%,color-mix(in srgb,var(--good) 55%,transparent) " + at + "%)" },
+      h("i", { className: "pentry", style: "left:" + at + "%" }), h("i", { className: "pmark " + (pips >= 0 ? "up" : "down"), style: "left:" + mark + "%" })));
+  const pv = pipValueUsd(it.symbol, q);
+  let total = null;
+  const rows = it.ts.map((t) => {
+    const amt = pv ? Number(t.lots) * pips * pv : null;
+    if (amt != null) total = (total ?? 0) + amt;
+    return h("div", { className: "pacct" }, h("span", { textContent: t.account.replace(/^MOCK /, "") }), h("span", { className: "muted", textContent: t.lots + " lots" }),
+      h("span", { className: "pamt " + (pips >= 0 ? "long" : "short"), textContent: amt != null ? money(amt) : (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips" }));
+  });
+  return { total, el: h("div", { className: "wdetail" }, bar, ...rows) };
 }
 
 function renderWatch() {

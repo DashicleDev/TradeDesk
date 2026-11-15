@@ -322,3 +322,23 @@ button,.btn,label,summary,input,select,textarea,a,.scard,tr.click,.symitem,.swat
 .logbox>summary{cursor:pointer;list-style:none}.logbox>summary::-webkit-details-marker{display:none}.logbox>summary h2{display:inline;margin:0}
 .logbox[open]>summary{margin-bottom:8px}
 @media (max-width:640px){.wrow{grid-template-columns:minmax(0,1fr) auto;gap:10px}}
+
+/* running position: SL .. entry .. TP bar and the accounts' results */
+.wdetail{grid-column:1/-1;display:grid;gap:6px;margin-top:2px}
+.pbar{margin-bottom:6px}
+.ptrack{position:relative;height:14px;border-radius:7px}
+.pentry{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px}
+.pmark{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:3px solid var(--paper);box-shadow:0 0 0 1px var(--line)}
+.pmark.up{background:var(--good)}.pmark.down{background:var(--bad)}
+.plabels{display:flex;justify-content:space-between;font:500 11px var(--mono);color:var(--muted);margin-top:5px}
+.pacct{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;font-size:13px;padding:4px 0;border-top:1px solid var(--line)}
+.pamt{font:600 14px var(--mono);min-width:96px;text-align:right}
+.muted{color:var(--muted)}
+/* minimal position detail: a thin bar, quiet account lines */
+.ptrack{height:6px;border-radius:3px}
+.pentry{top:-4px;bottom:-4px}
+.pmark{width:12px;height:12px;margin:-6px 0 0 -6px;border-width:2px}
+.pbar{margin:4px 0 2px}
+.pacct{border-top:0;padding:1px 0;font-size:12px;color:var(--muted)}
+.pamt{font:500 12px var(--mono);min-width:0}
+.wdetail{gap:2px}
