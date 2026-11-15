@@ -188,3 +188,17 @@ main{grid-template-columns:minmax(0,1fr)}
 .scard{cursor:pointer}
 .scard .shead .sw{display:inline-flex;flex:none}
 .scard .shead .sw input{width:46px;height:28px;padding:0;margin:0;accent-color:initial}
+
+/* review and send */
+.rcard{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px;margin-bottom:12px;display:grid;gap:10px}
+.rcard.bad{border-style:dashed;opacity:.85}
+.rcard .shead{display:flex;align-items:center;gap:8px;font-weight:600}
+.rtpl{margin:0;color:var(--muted);font-size:13px}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.rstat{display:flex;flex-direction:column;gap:2px}
+.rl{font-size:12px;color:var(--muted);font-weight:600}
+.rv{font:600 15px var(--mono)}.rv.big{font-size:24px;color:var(--good)}
+.rwhy{margin:0;color:var(--bad);font-size:14px}
+.rresult{display:flex;gap:10px;align-items:flex-start;padding-top:8px;border-top:1px solid var(--line)}
+.rmsg{font-size:14px;min-width:0}
+#reviewSheet .sheet-inner{width:min(100%,560px)}

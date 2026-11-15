@@ -59,13 +59,19 @@
         <p class="hint">Orders you saved but haven't sent. Create one with the + button.</p>
         <div class="tbl"><table><thead><tr><th>Pair</th><th>Side</th><th>Type</th><th class="r">Lots</th><th class="r">Entry</th><th class="r">SL</th><th class="r">TP</th><th>Accounts</th><th>Note</th><th></th></tr></thead><tbody id="draftRows"></tbody></table></div>
       </div>
+      <div class="panel" style="margin-top:20px">
+        <h2>Send log</h2>
+        <p class="hint">What was sent where, and what the broker answered. Newest first.</p>
+        <div class="tbl"><table><thead><tr><th>When</th><th>Account</th><th>Order</th><th>Status</th><th>Answer</th></tr></thead><tbody id="logRows"></tbody></table></div>
+      </div>
     </section>
 
     <section id="tAccounts" hidden>
       <div class="panel">
         <h2>Linked accounts</h2>
         <p class="hint">Link your cTrader ID once. You log in on cTrader's own page; Desk never sees your broker password.</p>
-        <div class="row" style="margin-bottom:16px"><button class="btn primary" id="link">Link cTrader account(s)</button></div>
+        <div class="row" style="margin-bottom:8px"><button class="btn primary" id="link">Link cTrader account(s)</button><button class="btn" id="linkTrade">Link with trading permission</button></div>
+        <p class="hint">The first link is view-only. Sending orders needs the trading permission: link again with the second button. Orders still only go to demo accounts for now.</p>
         <div class="tbl"><table><thead><tr><th>Account</th><th>Default template</th><th class="r">Starting size</th></tr></thead><tbody id="accRows"></tbody></table></div>
         <p class="hint" style="margin:12px 0 0">The default template is used when you send an order; you can override it per order. Starting size is what "% at risk" is measured against.</p>
       </div>
@@ -185,26 +191,40 @@
         </div>
 
         <details class="sendbox">
-          <summary>Send to accounts <small id="sendCount">(arrives in step 3)</small></summary>
+          <summary>Send to accounts <small id="sendCount"></small></summary>
           <div class="sendtools"><button type="button" class="linkbtn" id="selAll">All</button><button type="button" class="linkbtn" id="selNone">None</button></div>
           <div id="sendTo"></div>
           <p class="msg warn" id="multiWarn" hidden style="display:block">Several accounts selected. Some prop firms treat one trade sent to several of their accounts as copy trading: check FTMO's and FundingPips' rules first.</p>
           <p class="hint" id="estNote" hidden style="margin:8px 0 0">≈ marks an estimate: it assumes a USD account and a standard contract size, and works for pairs that include USD. The exact lots are worked out when sending (step 3).</p>
-          <p class="hint" style="margin:8px 0 0">Nothing is sent yet: sending arrives in step 3. For now the order is saved as a draft.</p>
+          <p class="hint" style="margin:8px 0 0">Orders go to demo accounts only for now; live accounts arrive in step 4. Mock accounts get a simulated answer and nothing reaches a broker.</p>
         </details>
 
         <p class="msg err" id="oMsg"></p>
         <div class="formfoot sticky">
-          <button class="btn primary" type="submit">Save draft</button>
-          <button class="btn" type="button" disabled title="Coming in step 3">Review &amp; send</button>
+          <button class="btn" type="submit">Save draft</button>
+          <button class="btn primary" type="button" id="reviewBtn">Review &amp; send</button>
         </div>
       </form>
     </div>
   </div>
 </div>
+  <div class="sheet" id="reviewSheet" hidden>
+    <div class="scrim" data-close></div>
+    <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="rTitle">
+      <div class="formhead"><h3 id="rTitle">Review and send</h3><button type="button" class="btn small ghost closex" data-close>Close</button></div>
+      <p class="hint" id="rIntro" style="margin:0 0 12px;max-width:none"></p>
+      <div id="reviewList"></div>
+      <p class="msg err" id="rMsg"></p>
+      <div class="formfoot sticky">
+        <button class="btn" type="button" id="rBack">Back</button>
+        <button class="btn primary" type="button" id="doSend">Send</button>
+      </div>
+    </div>
+  </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="desk.js"></script>
 <script src="ticket.js"></script>
+<script src="send.js"></script>
 </body></html>

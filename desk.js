@@ -109,4 +109,4 @@ async function loadAccounts() {
   }));
 }
 
-function loadDesk() { loadDrafts(); loadTemplates(); }
+function loadDesk() { loadDrafts(); loadTemplates(); loadLog(); }

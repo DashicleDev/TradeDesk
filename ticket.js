@@ -141,19 +141,32 @@ function openSheet() {
 }
 $("fab").onclick = openSheet;
 
-$("orderForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const row = {
+function orderRow() {
+  return {
     symbol: oe.symbol.value.trim().toUpperCase(), side: side(), order_type: oe.order_type.value, lots: num(oe.lots.value), entry: num(oe.entry.value),
     sl: oe.sl_on.checked ? num(oe.sl.value) : null, tp: oe.tp_on.checked ? num(oe.tp.value) : null,
     expires_at: oe.exp_on.checked && oe.expires.value ? new Date(oe.expires.value).toISOString() : null, note: oe.note.value.trim() || null,
     targets: TK.rows.filter((r) => TK.sel.has(r.a.id)).map((r) => ({ account_id: r.a.id, template_id: r.sel.value || null })), // ticked accounts and their templates
   };
-  const { error } = TK.editing ? await sb.from("td_orders").update(row).eq("id", TK.editing) : await sb.from("td_orders").insert(row);
+}
+// Insert, or update when editing. After the first save the form is an edit of that draft.
+async function persistDraft() {
+  const row = orderRow();
+  if (TK.editing) { const { error } = await sb.from("td_orders").update(row).eq("id", TK.editing); return { error, id: TK.editing }; }
+  const { data, error } = await sb.from("td_orders").insert(row).select("id").single();
+  if (data) TK.editing = data.id;
+  return { error, id: data?.id };
+}
+const saveError = (error) => error.code === "23514" ? "Check the prices: a long needs its stop below the entry and its take profit above, a short the other way round." : error.message;
+
+$("orderForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const { error } = await persistDraft();
   // errors go inside the sheet: the page-level message sits behind it
-  if (error) { $("oMsg").textContent = error.code === "23514" ? "Check the prices: a long needs its stop below the entry and its take profit above, a short the other way round." : error.message; return; }
+  if (error) { $("oMsg").textContent = saveError(error); return; }
   $("oMsg").textContent = ""; sheet.hidden = true; loadDrafts();
 };
+
 
 // +1 / -1 / +10 / -10 on the pips and price rows of SL and TP. Pips change the distance; price moves the level up or down by that many pips.
 $("orderForm").addEventListener("click", (e) => {
@@ -222,7 +235,7 @@ function updateSend() {
     const out = on ? lotsFor(r.a, templates.find((x) => x.id === r.sel.value), lots) : { text: "", cls: "" };
     r.res.textContent = out.text; r.res.className = "slots " + out.cls; anyEst = anyEst || !!out.est;
   }
-  $("sendCount").textContent = n ? "· " + n + " selected" : "(arrives in step 3)";
+  $("sendCount").textContent = n ? "· " + n + " selected" : "";
   $("multiWarn").hidden = n < 2;
   $("estNote").hidden = !anyEst;
 }
