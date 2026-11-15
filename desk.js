@@ -21,11 +21,17 @@ async function del(table, id, reload) {
   reload();
 }
 
+// a price with its distance from the entry in pips underneath
+function legCell(o, k) {
+  const v = o[k], p = v != null ? pipsBetween(o.symbol, o.entry, v) : "";
+  return h("td", { className: "r num" }, v != null ? String(v) : "", p ? h("small", { className: "pipsub", textContent: p + " pips" }) : "");
+}
+
 async function loadDrafts() {
   const { data, error } = await sb.from("td_orders").select("*").eq("status", "draft").order("created_at", { ascending: false });
   if (error) return msg(error.message, true);
   $("draftRows").replaceChildren(...(data.length ? data.map((i) => h("tr", {},
-    cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), cell(i.order_type === "stop" ? "Stop" : "Limit"), numCell(i.lots), numCell(i.entry), numCell(i.sl), numCell(i.tp), cell((i.targets || []).length ? (i.targets.length + (i.targets.length === 1 ? " account" : " accounts")) : "none"), cell(i.note),
+    cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), cell(i.order_type === "stop" ? "Stop" : "Limit"), numCell(i.lots), numCell(i.entry), legCell(i, "sl"), legCell(i, "tp"), cell((i.targets || []).length ? (i.targets.length + (i.targets.length === 1 ? " account" : " accounts")) : "none"), cell(i.note),
     h("td", { className: "r" },
       h("button", { className: "btn small ghost", textContent: "Edit", onclick: () => openOrder(i) }), " ",
       h("button", { className: "btn small ghost danger", textContent: "Delete", onclick: () => del("td_orders", i.id, loadDrafts) })))) : [emptyRow(10, "No drafts yet. Use the + button.")]));

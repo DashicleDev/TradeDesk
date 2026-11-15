@@ -2,7 +2,7 @@
 // Used by both "review" (what the confirm screen shows) and "send" (what actually goes out): the server decides, the page only displays.
 //
 // account: { is_live, start_balance }
-// order:   { side: "buy"|"sell", lots, entry, sl, tp, expires_at }   (the order type is derived here, not read from the order)
+// order:   { side: "buy"|"sell", lots, entry, entry_ref, sl, tp, expires_at }   (the order type is derived here, not read from the order)
 // tpl:     a td_templates row
 // sym:     { digits, pip_size, min_lots, step_lots, max_lots, bid, ask }
 // ctx:     { balance, currency, openCount }  (the account's current state)
@@ -25,19 +25,33 @@ export function plan({ symbol, account, order, tpl, sym, ctx, now = Date.now() }
   const buy = order.side === "buy", pip = sym.pip_size;
   const entry = Number(Number(order.entry).toFixed(sym.digits));
 
-  // the order type follows from where the entry sits against the current price: a buy below it (or a sell above it) is a limit
-  // order, the other side is a stop order. The review screen names the type, so nothing changes kind unnoticed.
+  // What the order was meant as: a limit if the entry sat on the better side of the market when it was set (entry_ref), else a stop.
+  // Without that reference price (the page had no live price) it is judged against the market now, and never converted.
   const ref = buy ? sym.ask : sym.bid;          // what you would pay or receive right now
-  if (entry === ref) return block("the entry equals the current price: move it away from the market");
-  const orderType = buy ? (entry < ref ? "limit" : "stop") : (entry > ref ? "limit" : "stop");
+  if (order.entry_ref == null && entry === ref) return block("the entry equals the current price: move it away from the market");
+  const was = order.entry_ref != null ? Number(order.entry_ref) : ref;
+  const meant = (buy ? entry < was : entry > was) ? "limit" : "stop";
+  let orderType = meant, converted = false;
+  if (meant === "limit") {
+    const waiting = buy ? entry < ref : entry > ref;          // the price has not reached the limit yet
+    if (!waiting) {
+      if (order.entry_ref == null) return block("the entry equals the current price: move it away from the market");
+      // The price has passed the limit: the market is at the limit or better, so send at market instead. SL and TP keep their
+      // pip distances from the fill (a market order takes them relative to the fill price, not as absolute prices).
+      orderType = "market"; converted = true;
+    }
+  } else if (!(buy ? entry > ref : entry < ref)) {
+    return block("the price has already passed your stop entry: not chasing it, move the entry");  // a market fill would be a worse price
+  }
+  const base = orderType === "market" ? ref : entry; // where SL and TP are measured from
 
   // stop loss / take profit: the template's fixed value, or the order's own, then the adjustment
   const leg = (own, fixedPips, copy, adjust, dir) => {
     let pips = fixedPips ?? (copy && own != null ? Math.abs(entry - own) / pip : null);
     if (pips == null) return { pips: null, price: null };
-    pips += adjust || 0;
+    pips = Number((pips + (adjust || 0)).toFixed(4)); // distances come from subtracting prices: strip the float noise
     if (pips <= 0) return { bad: true };
-    return { pips, price: Number((entry + dir * pips * pip).toFixed(sym.digits)) };
+    return { pips, price: Number((base + dir * pips * pip).toFixed(sym.digits)) };
   };
   const slDir = buy ? -1 : 1;
   const sl = leg(order.sl, tpl.fixed_sl_pips, tpl.copy_sl, tpl.sl_adjust_pips, slDir);
@@ -80,8 +94,9 @@ export function plan({ symbol, account, order, tpl, sym, ctx, now = Date.now() }
   }
   if (tpl.max_open && ctx.openCount >= tpl.max_open) return block(`already ${ctx.openCount} open trades (limit ${tpl.max_open})`);
 
-  const expiresAt = order.expires_at ? Date.parse(order.expires_at) : tpl.expiry_hours ? now + tpl.expiry_hours * 3600e3 : null;
+  // a market order fills at once, so an expiry means nothing for it
+  const expiresAt = orderType === "market" ? null : order.expires_at ? Date.parse(order.expires_at) : tpl.expiry_hours ? now + tpl.expiry_hours * 3600e3 : null;
   if (expiresAt != null && expiresAt <= now) return block("the expiry is in the past");
 
-  return { ok: true, orderType, lots, entry, sl: sl.price, tp: tp.price, expiresAt, riskMoney, riskPct };
+  return { ok: true, orderType, converted, limitEntry: entry, entry: base, sl: sl.price, tp: tp.price, slPips: sl.pips, tpPips: tp.pips, lots, expiresAt, riskMoney, riskPct };
 }

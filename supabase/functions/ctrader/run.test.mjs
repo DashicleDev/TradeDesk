@@ -129,6 +129,22 @@ assert.equal(rv4.rows[0].ok, true, rv4.rows[0].reason);
 assert.equal(rv4.rows[0].orderType, "stop");
 assert.equal(by(review.rows, "acc-aaaaaaaa").orderType, "limit"); // the earlier entry (160.5) sat above the bid: a limit
 
+// 6b. a limit the price has passed: composed when the bid was 159.0 (entry_ref), limit sell at 159.5; the market is now ~159.8, through it
+tables.td_orders.push(draft({ id: "ord-66666666-ffff", entry: 159.5, entry_ref: 159.0, sl: 159.8, tp: 159.0, targets: [{ account_id: "acc-aaaaaaaa", template_id: "t-scale" }] }));
+const rv6 = await call({ action: "review", order_id: "ord-66666666-ffff" });
+assert.equal(rv6.rows[0].ok, true, rv6.rows[0].reason);
+assert.equal(rv6.rows[0].orderType, "market");
+assert.equal(rv6.rows[0].converted, true);
+assert.equal(rv6.rows[0].limitEntry, 159.5);
+// confirming the lots but a different type (what was reviewed was a limit) is refused: the order kind changed since the review
+r = await call({ action: "send", order_id: "ord-66666666-ffff", expected: [{ account_id: "acc-aaaaaaaa", lots: rv6.rows[0].lots, orderType: "limit" }] });
+assert.equal(r.rows[0].status, "changed");
+assert.match(r.rows[0].reason, /order type changed from limit to market/);
+r = await call({ action: "send", order_id: "ord-66666666-ffff", expected: [{ account_id: "acc-aaaaaaaa", lots: rv6.rows[0].lots, orderType: "market" }] });
+assert.equal(r.rows[0].status, "simulated");
+assert.match(r.rows[0].message, /At market/);
+assert.equal(logOf("simulated").find((x) => x.order_id === "ord-66666666-ffff").order_type, "market");
+
 // 7. someone else's order is invisible
 tables.td_orders.push(draft({ id: "ord-55555555-eeee", user_id: "other" }));
 err = await call({ action: "review", order_id: "ord-55555555-eeee" });

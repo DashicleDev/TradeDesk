@@ -3,7 +3,7 @@
 const sheet = $("orderSheet");
 const oe = $("orderForm").elements;
 const POLL_MS = 4000;
-const TK = { editing: null, entryTouched: false, quote: null, simulated: false, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, pipTouched: false };
+const TK = { baseline: null, editing: null, entryTouched: false, quote: null, simulated: false, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, pipTouched: false };
 
 const side = () => oe.side.value; // "buy" | "sell" | "" until chosen
 const pip = () => num(oe.pip.value);
@@ -62,9 +62,20 @@ function syncLeg(k) {
     if (v <= 0) oe[k].setCustomValidity(k === "sl" ? "The stop loss is on the wrong side of the entry." : "The take profit is on the wrong side of the entry.");
   }
 }
+// Distance between two prices in pips, for lists that only hold prices (drafts, the log). Uses the pair-name guess for the pip size,
+// so only for plain FX pairs and gold; anything else gets no number rather than a wrong one. The ticket and the review use the broker's pip size.
+function pipsBetween(symbol, a, b) {
+  if (a == null || b == null || !/^([A-Z]{6}|XAU[A-Z]{3})$/.test(String(symbol || "").toUpperCase())) return "";
+  const p = Math.abs(a - b) / guessPip(String(symbol));
+  return String(Math.round(p * 10) / 10);
+}
 function updateRR() {
-  const s = Math.abs(num(oe.sl_pips.value)), t = Math.abs(num(oe.tp_pips.value)); // a minus sign (as TradingView shows a stop) only marks the direction
-  $("rr").textContent = oe.sl_on.checked && oe.tp_on.checked && s > 0 && t > 0 ? `Reward to risk: ${(t / s).toFixed(2)} : 1` : "";
+  const s = oe.sl_on.checked ? Math.abs(num(oe.sl_pips.value)) : 0, t = oe.tp_on.checked ? Math.abs(num(oe.tp_pips.value)) : 0; // a minus sign (as TradingView shows a stop) only marks the direction
+  const parts = [];
+  if (s > 0) parts.push("Risk " + s + " pips");
+  if (t > 0) parts.push("Reward " + t + " pips");
+  if (s > 0 && t > 0) parts.push((t / s).toFixed(2) + " : 1");
+  $("rr").textContent = parts.join(" \u00b7 ");
 }
 const updateAll = () => { updateEntry(); syncLeg("sl"); syncLeg("tp"); updateRR(); updateSend(); };
 
@@ -131,7 +142,7 @@ oe.symbol.oninput = () => {
 
 // ---- open / close / save
 function openSheet() {
-  TK.editing = null; $("oTitle").textContent = "New order"; $("orderForm").querySelector("button[type=submit]").textContent = "Save draft";
+  TK.editing = null; TK.baseline = null; $("oTitle").textContent = "New order"; $("orderForm").querySelector("button[type=submit]").textContent = "Save draft";
   $("oMsg").textContent = "";
   $("orderForm").reset();
   TK.quote = null; TK.src.sl = TK.src.tp = "pips"; TK.pipTouched = false; TK.entryTouched = false;
@@ -143,9 +154,14 @@ function openSheet() {
 }
 $("fab").onclick = openSheet;
 
+function entryRef() {
+  const b = TK.baseline;
+  if (b && b.entry === num(oe.entry.value) && b.side === side() && b.symbol === oe.symbol.value.trim().toUpperCase()) return b.ref;
+  return market(); // null when there was no live price: the server then never converts
+}
 function orderRow() {
   return {
-    symbol: oe.symbol.value.trim().toUpperCase(), side: side(), order_type: orderTypeNow(), lots: num(oe.lots.value), entry: num(oe.entry.value),
+    symbol: oe.symbol.value.trim().toUpperCase(), side: side(), order_type: orderTypeNow(), lots: num(oe.lots.value), entry: num(oe.entry.value), entry_ref: entryRef(),
     sl: oe.sl_on.checked ? num(oe.sl.value) : null, tp: oe.tp_on.checked ? num(oe.tp.value) : null,
     expires_at: oe.exp_on.checked && oe.expires.value ? new Date(oe.expires.value).toISOString() : null, note: oe.note.value.trim() || null,
     targets: TK.rows.filter((r) => TK.sel.has(r.a.id)).map((r) => ({ account_id: r.a.id, template_id: r.sel.value || null })), // ticked accounts and their templates
@@ -154,6 +170,7 @@ function orderRow() {
 // Insert, or update when editing. After the first save the form is an edit of that draft.
 async function persistDraft() {
   const row = orderRow();
+  TK.baseline = { entry: row.entry, side: row.side, symbol: row.symbol, ref: row.entry_ref };
   if (TK.editing) { const { error } = await sb.from("td_orders").update(row).eq("id", TK.editing); return { error, id: TK.editing }; }
   const { data, error } = await sb.from("td_orders").insert(row).select("id").single();
   if (data) TK.editing = data.id;
@@ -273,6 +290,7 @@ oe.lots.oninput = updateSend;
 function openOrder(dr) {
   openSheet();
   TK.editing = dr.id;
+  TK.baseline = { entry: dr.entry, side: dr.side, symbol: dr.symbol, ref: dr.entry_ref ?? null };
   $("oTitle").textContent = "Edit draft";
   $("orderForm").querySelector("button[type=submit]").textContent = "Save changes";
   oe.symbol.value = dr.symbol;

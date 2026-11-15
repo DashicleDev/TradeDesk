@@ -66,4 +66,33 @@ r = plan({ symbol: "EURUSD", account: demo(), order: long, tpl: tpl(), sym: euru
 assert.equal(r.ok, true);
 assert.equal(r.lots, 5);   // 1000 / (20 pips x $10) = 5
 assert.equal(r.orderType, "limit");
+// ---- a limit the price has passed is sent at market; a stop is never chased
+// sell limit composed when the bid was 159.834 (entry_ref), entry 159.9
+const lim = { ...order, entry: 159.9, entry_ref: 159.834, sl: 160.1, tp: 159.5 };
+const fixedTpl = tpl({ lot_mode: "fixed", lot_value: 1 });
+r = run({ order: lim, tpl: fixedTpl });
+assert.equal(r.orderType, "limit"); assert.equal(r.converted, false);                       // price still below the limit: waiting
+// the bid has now risen through 159.9: market, at the bid, SL/TP keep their pip distances (20 pips / 40 pips) from the fill
+const through = { ...usdjpy, bid: 159.95, ask: 159.962 };
+r = run({ order: lim, tpl: fixedTpl, sym: through });
+assert.equal(r.orderType, "market"); assert.equal(r.converted, true);
+assert.equal(r.entry, 159.95); assert.equal(r.limitEntry, 159.9);
+assert.equal(r.sl, 160.15); assert.equal(r.tp, 159.55);                                      // 159.95 + 20 pips, 159.95 - 40 pips
+assert.equal(r.slPips, 20); assert.equal(r.tpPips, 40);
+assert.equal(r.expiresAt, null, "market orders carry no expiry");
+// buy limit composed at ask 159.846, entry 159.7; the ask drops to 159.6: fills at market, better than the limit
+const bl = { ...order, side: "buy", entry: 159.7, entry_ref: 159.846, sl: 159.5, tp: 160.0 };
+assert.equal(run({ order: bl, tpl: fixedTpl }).orderType, "limit");
+r = run({ order: bl, tpl: fixedTpl, sym: { ...usdjpy, bid: 159.588, ask: 159.6 } });
+assert.equal(r.orderType, "market"); assert.equal(r.entry, 159.6); assert.equal(r.sl, 159.4); assert.equal(r.tp, 159.9);
+// exactly at the limit counts as reached
+assert.equal(run({ order: bl, tpl: fixedTpl, sym: { ...usdjpy, bid: 159.688, ask: 159.7 } }).orderType, "market");
+// a stop (entry on the far side of the reference): waits, and is refused (not chased) once the price has gone through it
+const st = { ...order, entry: 159.7, entry_ref: 159.834, sl: 159.9, tp: 159.4 };            // sell stop below the bid
+assert.equal(run({ order: st, tpl: fixedTpl }).orderType, "stop");
+assert.match(run({ order: st, tpl: fixedTpl, sym: { ...usdjpy, bid: 159.65, ask: 159.662 } }).reason, /not chasing/);
+// without a reference price the old rule holds: judged against the market now, never converted
+r = run({ order: { ...order, entry: 159.7, sl: 159.9, tp: 159.4 }, tpl: fixedTpl });
+assert.equal(r.orderType, "stop"); assert.equal(r.converted, false);
+
 console.log("plan tests passed");

@@ -183,7 +183,7 @@ const mockCtx = (a: any) => ({ balance: mockAccount(a).balance, currency: "USD",
 // ---- review and send (step 3)
 const BLOCKING = ["sent", "simulated", "pending", "unknown"]; // an earlier attempt that must not be repeated automatically
 
-async function runOrder(uid: string, orderId: string, mode: "review" | "send", expected: { account_id: string; lots: number }[]) {
+async function runOrder(uid: string, orderId: string, mode: "review" | "send", expected: { account_id: string; lots: number; orderType?: string }[]) {
   const { data: order } = await admin.from("td_orders").select("*").eq("id", orderId).eq("user_id", uid).maybeSingle();
   if (!order) throw new Error("order not found");
   if (order.status !== "draft") throw new Error("this order was already sent");
@@ -225,13 +225,15 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
         }
         const p = plan({ symbol: order.symbol, account: a, order, tpl, sym, ctx });
         if (!p.ok) return await blocked(p.reason);
-        const shown = { ...head, ok: true, orderType: p.orderType, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, expiresAt: p.expiresAt, riskMoney: p.riskMoney, riskPct: p.riskPct, currency: ctx.currency };
+        const shown = { ...head, ok: true, orderType: p.orderType, converted: p.converted, limitEntry: p.limitEntry, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, slPips: p.slPips, tpPips: p.tpPips, expiresAt: p.expiresAt, riskMoney: p.riskMoney, riskPct: p.riskPct, currency: ctx.currency };
         if (mode === "review") return rows.push({ ...shown, status: "ready" });
 
         // send: what was confirmed must be what goes out
         const want = expected.find((x) => x.account_id === a.id);
-        if (!want || Math.abs(want.lots - p.lots) > 1e-9) {
-          const why = want ? `the lot size changed from ${want.lots} to ${p.lots} since you reviewed (the price moved): review again` : "this account wasn't in what you confirmed: review again";
+        if (!want || Math.abs(want.lots - p.lots) > 1e-9 || (want.orderType && want.orderType !== p.orderType)) {
+          const why = !want ? "this account wasn't in what you confirmed: review again"
+            : Math.abs(want.lots - p.lots) > 1e-9 ? `the lot size changed from ${want.lots} to ${p.lots} since you reviewed (the price moved): review again`
+            : `the order type changed from ${want.orderType} to ${p.orderType} since you reviewed (the price moved): review again`;
           await admin.from("td_send_log").insert({ ...logBase, order_type: p.orderType, status: "changed", message: why, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp });
           return rows.push({ ...shown, ok: false, reason: why, status: "changed" });
         }
@@ -241,20 +243,24 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
         const { data: row, error: insErr } = await admin.from("td_send_log").insert({ ...logBase, order_type: p.orderType, status: "pending", message: "sending", lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, client_order_id: clientId }).select("id").single();
         if (insErr) return rows.push({ ...shown, ok: false, reason: "could not record the attempt, so nothing was sent", status: "blocked" });
         let status = "sent", message = "", response: any = null;
-        if (a.is_mock) { status = "simulated"; message = "Simulated: nothing was sent to any broker"; response = { simulated: true, orderId: "SIM-" + crypto.randomUUID().slice(0, 8) }; }
+        const atMarket = p.converted ? "At market, the price had passed your limit. " : "";
+        if (a.is_mock) { status = "simulated"; message = atMarket + "Simulated: nothing was sent to any broker"; response = { simulated: true, orderId: "SIM-" + crypto.randomUUID().slice(0, 8) }; }
         else {
           try {
-            const limit = p.orderType === "limit"; // derived from the entry and the live price, not from what the page stored
+            const kind = p.orderType; // "limit" | "stop" | "market", derived from the entry and the live price (plan.mjs)
+            const rel = (pips: number | null) => (pips == null ? undefined : Math.round(pips * info.pip_size * 1e5)); // relative SL/TP: 1/100000 of a price unit
             const payload = {
-              ctidTraderAccountId: id, symbolId: info.symbolId, orderType: limit ? 2 : 3, tradeSide: order.side === "buy" ? 1 : 2,
-              volume: Math.round(p.lots * info.lotSize), [limit ? "limitPrice" : "stopPrice"]: p.entry,
-              stopLoss: p.sl ?? undefined, takeProfit: p.tp ?? undefined,
-              timeInForce: p.expiresAt ? 1 : 2, expirationTimestamp: p.expiresAt ?? undefined,
+              ctidTraderAccountId: id, symbolId: info.symbolId, orderType: kind === "market" ? 1 : kind === "limit" ? 2 : 3, tradeSide: order.side === "buy" ? 1 : 2,
+              volume: Math.round(p.lots * info.lotSize),
+              ...(kind === "market"
+                ? { relativeStopLoss: rel(p.slPips), relativeTakeProfit: rel(p.tpPips) } // cTrader takes no absolute SL/TP on a market order
+                : { [kind === "limit" ? "limitPrice" : "stopPrice"]: p.entry, stopLoss: p.sl ?? undefined, takeProfit: p.tp ?? undefined,
+                    timeInForce: p.expiresAt ? 1 : 2, expirationTimestamp: p.expiresAt ?? undefined }),
               label: "Desk", comment: tpl.comment ?? undefined, clientOrderId: clientId,
             };
             const r = await c.send(T.newOrderReq, payload);
             response = { orderId: r?.order?.orderId ?? null, executionType: r?.executionType ?? null };
-            message = `Accepted by the broker${response.orderId ? ` (order ${response.orderId})` : ""}`;
+            message = `${atMarket}Accepted by the broker${response.orderId ? ` (order ${response.orderId})` : ""}`;
           } catch (e) {
             const m = (e as Error).message;
             if (m === "cTrader timeout") { status = "unknown"; message = "No answer from cTrader: check the account before sending again"; }

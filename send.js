@@ -6,7 +6,7 @@ let RV = null; // { orderId, rows, phase: "review" | "sent" }
 const usd = (n) => "$" + Math.round(n).toLocaleString();
 const when = (ms) => new Date(ms).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
 const STATUS_PILL = { ready: "ok", sent: "ok", simulated: "ok", rejected: "no", blocked: "no", changed: "warn", unknown: "warn", pending: "" };
-const stat = (label, value, cls = "") => h("div", { className: "rstat" }, h("span", { className: "rl", textContent: label }), h("span", { className: "rv " + cls, textContent: value }));
+const stat = (label, value, cls = "", sub = "") => h("div", { className: "rstat" }, h("span", { className: "rl", textContent: label }), h("span", { className: "rv " + cls, textContent: value }), ...(sub ? [h("span", { className: "rsub", textContent: sub })] : []));
 
 function reviewCard(r) {
   const head = h("div", { className: "shead" }, h("span", { className: "sname", textContent: r.label }));
@@ -15,10 +15,11 @@ function reviewCard(r) {
   const card = h("div", { className: "rcard " + (r.ok ? "" : "bad") }, head);
   if (r.template) card.append(h("p", { className: "rtpl", textContent: "Template: " + r.template }));
   if (r.lots != null) {
-    const g = h("div", { className: "rgrid" }, stat("Lots", String(r.lots), "big"), stat("Order", (RV.side === "buy" ? "Buy " : "Sell ") + (r.orderType || "")), stat("Entry", String(r.entry)), stat("Stop loss", r.sl != null ? String(r.sl) : "none"), stat("Take profit", r.tp != null ? String(r.tp) : "none"));
+    const g = h("div", { className: "rgrid" }, stat("Lots", String(r.lots), "big"), stat("Order", (RV.side === "buy" ? "Buy " : "Sell ") + (r.orderType || "")), stat("Entry", String(r.entry)), stat("Stop loss", r.sl != null ? String(r.sl) : "none", "", r.slPips != null ? r.slPips + " pips" : ""), stat("Take profit", r.tp != null ? String(r.tp) : "none", "", r.tpPips != null ? r.tpPips + " pips" : ""));
     if (r.riskMoney != null) g.append(stat("Risk", usd(r.riskMoney) + (r.riskPct != null ? ` (${r.riskPct.toFixed(2)}%)` : "")));
     if (r.expiresAt) g.append(stat("Cancels at", when(r.expiresAt)));
     card.append(g);
+    if (r.converted) card.append(h("p", { className: "rnote", textContent: "The price has passed your limit (" + r.limitEntry + "). This goes out as a market order at about " + r.entry + ", with the same stop loss and take profit distances." }));
   }
   if (RV.phase === "sent" && r.status && r.status !== "ready") {
     card.append(h("div", { className: "rresult" }, h("span", { className: "pill " + (STATUS_PILL[r.status] ?? ""), textContent: r.status }), h("span", { className: "rmsg", textContent: r.message || r.reason || "" })));
@@ -69,7 +70,7 @@ $("doSend").onclick = async () => {
   const mode = $("doSend").dataset.mode;
   if (mode === "done") { reviewSheet.hidden = true; $("orderSheet").hidden = true; loadDrafts(); loadLog(); return; }
   if (mode === "again") { reviewSheet.hidden = true; loadDrafts(); loadLog(); return startReview(); }
-  const expected = RV.rows.filter((r) => r.ok).map((r) => ({ account_id: r.account_id, lots: r.lots })); // what was confirmed is what the server must send
+  const expected = RV.rows.filter((r) => r.ok).map((r) => ({ account_id: r.account_id, lots: r.lots, orderType: r.orderType })); // what was confirmed is what the server must send
   $("doSend").disabled = true; $("rMsg").textContent = "";
   try {
     const r = await call("send", { order_id: RV.orderId, expected });
@@ -85,7 +86,7 @@ async function loadLog() {
   $("logRows").replaceChildren(...(data.length ? data.map((l) => h("tr", {},
     cell(new Date(l.created_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })),
     cell(l.account_label),
-    cell(`${l.symbol} ${l.side === "buy" ? "long" : "short"} ${l.order_type}${l.lots != null ? " " + l.lots + " lots" : ""}${l.entry != null ? " @ " + l.entry : ""}`),
+    cell(`${l.symbol} ${l.side === "buy" ? "long" : "short"} ${l.order_type}${l.lots != null ? " " + l.lots + " lots" : ""}${l.entry != null ? " @ " + l.entry : ""}`+ (l.sl != null || l.tp != null ? " \u00b7 SL " + (pipsBetween(l.symbol, l.entry, l.sl) || "-") + " / TP " + (pipsBetween(l.symbol, l.entry, l.tp) || "-") + " pips" : "")),
     h("td", {}, h("span", { className: "pill " + (STATUS_PILL[l.status] ?? ""), textContent: l.status })),
     cell(l.message))) : [emptyRow(5, "Nothing sent yet.")]));
 }
