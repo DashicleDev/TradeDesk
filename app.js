@@ -3,6 +3,7 @@ const sb = supabase.createClient(TD.SUPABASE_URL, TD.SUPABASE_ANON_KEY, { auth: 
 const $ = id => document.getElementById(id);
 const msg = (t, err) => { $("msg").textContent = t || ""; $("msg").className = err ? "msg err" : "msg"; };
 const fmt = (n) => (typeof n === "number" ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n);
+const BAL = {}; // account id -> current balance, from the last overview
 const redirectUri = location.origin + location.pathname;
 
 const emptyRow = (cols, text) => { const tr = document.createElement("tr"), td = document.createElement("td"); td.colSpan = cols; td.className = "empty"; td.textContent = text; tr.append(td); return tr; };
@@ -18,6 +19,7 @@ async function overview() {
   msg("Loading…");
   try {
     const { accounts } = await call("overview");
+    accounts.forEach((a) => { if (typeof a.balance === "number") BAL[a.id] = a.balance; });
     $("rows").replaceChildren(...accounts.map(a => {
       const tr = document.createElement("tr");
       const cells = a.error

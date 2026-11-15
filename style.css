@@ -175,3 +175,9 @@ main{grid-template-columns:minmax(0,1fr)}
 .scard .sctl{padding-left:0}
 .slots.big{font:700 22px var(--mono);color:var(--good);max-width:none}
 .slots.big{line-height:1}
+
+/* selected vs not selected: clear at a glance */
+.scard:not(.on){border-style:dashed;opacity:.62}
+.scard:not(.on):hover{opacity:1}
+.scard.on{border:2px solid var(--accent);padding:11px 13px;background:color-mix(in srgb,var(--accent) 20%,var(--paper));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.scard.on .sname::before{content:"✓";display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:8px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700}

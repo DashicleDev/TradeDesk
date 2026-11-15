@@ -3,7 +3,7 @@
 const sheet = $("orderSheet");
 const oe = $("orderForm").elements;
 const POLL_MS = 4000;
-const TK = { entryTouched: false, quote: null, simulated: false, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, pipTouched: false };
+const TK = { editing: null, entryTouched: false, quote: null, simulated: false, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, pipTouched: false };
 
 const side = () => oe.side.value; // "buy" | "sell" | "" until chosen
 const pip = () => num(oe.pip.value);
@@ -129,6 +129,7 @@ oe.symbol.oninput = () => {
 
 // ---- open / close / save
 function openSheet() {
+  TK.editing = null; $("oTitle").textContent = "New order"; $("orderForm").querySelector("button[type=submit]").textContent = "Save draft";
   $("oMsg").textContent = "";
   $("orderForm").reset();
   TK.quote = null; TK.src.sl = TK.src.tp = "pips"; TK.pipTouched = false; TK.entryTouched = false;
@@ -147,7 +148,7 @@ $("orderForm").onsubmit = async (e) => {
     sl: oe.sl_on.checked ? num(oe.sl.value) : null, tp: oe.tp_on.checked ? num(oe.tp.value) : null,
     expires_at: oe.exp_on.checked && oe.expires.value ? new Date(oe.expires.value).toISOString() : null, note: oe.note.value.trim() || null,
   };
-  const { error } = await sb.from("td_orders").insert(row);
+  const { error } = TK.editing ? await sb.from("td_orders").update(row).eq("id", TK.editing) : await sb.from("td_orders").insert(row);
   // errors go inside the sheet: the page-level message sits behind it
   if (error) { $("oMsg").textContent = error.code === "23514" ? "Check the prices: a long needs its stop below the entry and its take profit above, a short the other way round." : error.message; return; }
   $("oMsg").textContent = ""; sheet.hidden = true; loadDrafts();
@@ -175,15 +176,33 @@ $("orderForm").addEventListener("click", (e) => {
 let ACCTS = [];
 TK.sel = new Set(); TK.tpl = {}; TK.rows = []; // selected account ids; template picked per account
 const fmtLots = (v) => String(Math.round(v * 1e4) / 1e4);
+// Pip value in USD per lot, from the live price. Only for pairs with USD in them, and it assumes a USD account and a standard
+// contract (100,000 units, gold 100 oz). shortcut: an estimate for the preview; the real figure comes from the broker at step 3.
+function pipValueUsd(sym, q) {
+  const pipUnits = (sym.startsWith("XAU") ? 100 : 100000) * q.pip_size;
+  if (sym.endsWith("USD")) return pipUnits;
+  if (sym.startsWith("USD")) return pipUnits / ((q.bid + q.ask) / 2);
+  return null;
+}
 function lotsFor(a, tpl, lots) {
   if (!tpl) return { text: "pick a template", cls: "warn" };
-  let v;
+  let v, est = false;
   if (tpl.lot_mode === "fixed") v = Number(tpl.lot_value);
   else if (tpl.lot_mode === "multiplier" || tpl.lot_mode === "size_scale") {
     if (!lots) return { text: "enter a quantity", cls: "" };
     if (tpl.lot_mode === "size_scale" && !a.start_balance) return { text: "set its starting size", cls: "warn" };
     v = tpl.lot_mode === "multiplier" ? lots * tpl.lot_value : (lots * a.start_balance) / tpl.lot_value;
-  } else return oe.sl_on.checked ? { text: "sized from your stop when sending", cls: "" } : { text: "needs a stop loss", cls: "warn" };
+  } else { // risk_pct / balance_pct: lots = money at risk / (stop in pips x pip value)
+    const slPips = Math.abs(num(oe.sl_pips.value) ?? 0);
+    if (!oe.sl_on.checked || !slPips) return { text: "needs a stop loss", cls: "warn" };
+    const base = tpl.lot_mode === "risk_pct" ? a.start_balance : BAL[a.id];
+    if (!base) return { text: tpl.lot_mode === "risk_pct" ? "set its starting size" : "balance unknown", cls: "warn" };
+    if (!TK.quote) return { text: "needs a live price", cls: "warn" };
+    const pv = pipValueUsd(oe.symbol.value.trim().toUpperCase(), TK.quote);
+    if (!pv) return { text: "pip value: step 3", cls: "" };
+    v = (base * tpl.lot_value) / 100 / (slPips * pv);
+    est = true;
+  }
   if (tpl.max_lots) v = Math.min(v, tpl.max_lots);
   if (tpl.min_lots) v = Math.max(v, tpl.min_lots);
   const q = TK.quote;
@@ -191,19 +210,20 @@ function lotsFor(a, tpl, lots) {
     v = Math.floor(Math.min(v, q.max_lots) / q.step_lots + 1e-9) * q.step_lots;
     if (v < q.min_lots - 1e-12) return { text: "below the broker minimum: skipped", cls: "warn" };
   }
-  return { text: fmtLots(v) + " lots", cls: "ok big" };
+  return { text: (est ? "≈ " : "") + fmtLots(v) + " lots", cls: "ok big", est };
 }
 function updateSend() {
   const lots = num(oe.lots.value);
-  let n = 0;
+  let n = 0, anyEst = false;
   for (const r of TK.rows) {
     const on = TK.sel.has(r.a.id); n += on ? 1 : 0;
     r.row.classList.toggle("on", on); r.row.setAttribute("aria-checked", on);
     const out = on ? lotsFor(r.a, templates.find((x) => x.id === r.sel.value), lots) : { text: "", cls: "" };
-    r.res.textContent = out.text; r.res.className = "slots " + out.cls;
+    r.res.textContent = out.text; r.res.className = "slots " + out.cls; anyEst = anyEst || !!out.est;
   }
   $("sendCount").textContent = n ? "· " + n + " selected" : "(arrives in step 3)";
   $("multiWarn").hidden = n < 2;
+  $("estNote").hidden = !anyEst;
 }
 function renderSendTo() {
   TK.rows = [];
@@ -230,3 +250,22 @@ function renderSendTo() {
 $("selAll").onclick = () => { ACCTS.forEach((a) => TK.sel.add(a.id)); renderSendTo(); };
 $("selNone").onclick = () => { TK.sel.clear(); renderSendTo(); };
 oe.lots.oninput = updateSend;
+
+// Edit a saved draft: the same ticket, filled in. Prices are what is stored, so SL/TP open as prices and the pips follow.
+function openOrder(dr) {
+  openSheet();
+  TK.editing = dr.id;
+  $("oTitle").textContent = "Edit draft";
+  $("orderForm").querySelector("button[type=submit]").textContent = "Save changes";
+  oe.symbol.value = dr.symbol;
+  document.querySelector('input[name=side][value="' + dr.side + '"]').checked = true;
+  document.querySelector('input[name=order_type][value="' + (dr.order_type || "limit") + '"]').checked = true;
+  oe.lots.value = dr.lots; oe.entry.value = dr.entry; TK.entryTouched = true; // keep the saved entry, don't reset it to the market
+  for (const k of ["sl", "tp"]) if (dr[k] != null) { oe[k + "_on"].checked = true; oe[k].value = dr[k]; TK.src[k] = "price"; }
+  if (dr.expires_at) {
+    oe.exp_on.checked = true; $("expBox").hidden = false;
+    oe.expires.value = new Date(new Date(dr.expires_at).getTime() - new Date().getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
+  }
+  oe.note.value = dr.note ?? "";
+  oe.symbol.oninput(); // pip size guess, live price, recalculate everything
+}

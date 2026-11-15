@@ -26,7 +26,9 @@ async function loadDrafts() {
   if (error) return msg(error.message, true);
   $("draftRows").replaceChildren(...(data.length ? data.map((i) => h("tr", {},
     cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), cell(i.order_type === "stop" ? "Stop" : "Limit"), numCell(i.lots), numCell(i.entry), numCell(i.sl), numCell(i.tp), cell(i.note),
-    delBtn("td_orders", i.id, loadDrafts))) : [emptyRow(9, "No drafts yet. Use the + button.")]));
+    h("td", { className: "r" },
+      h("button", { className: "btn small ghost", textContent: "Edit", onclick: () => openOrder(i) }), " ",
+      h("button", { className: "btn small ghost danger", textContent: "Delete", onclick: () => del("td_orders", i.id, loadDrafts) })))) : [emptyRow(9, "No drafts yet. Use the + button.")]));
 }
 
 
