@@ -4,16 +4,22 @@ let DRAFTS = [], PENDING = [], POSITIONS = [], ACCT_DATA = []; // filled by load
 const PX = {}; // symbol -> { bid, ask, digits, pip_size, simulated } or null when there is no price
 const WATCH_MAX = 6; // symbols priced per round: each one is a call to the function
 
+// The one number up top: what the running positions are worth now, summed (pairs whose pip value is unknown are left out).
+// Equity summed over accounts says little, and the accounts table has each one.
 function renderStats() {
-  const acc = ACCT_DATA.filter((a) => !a.error);
-  const equity = acc.reduce((s, a) => s + (a.equity || 0), 0);
-  const open = POSITIONS.length || acc.reduce((s, a) => s + (a.positions || 0), 0);
-  const pend = PENDING.length || acc.reduce((s, a) => s + (a.orders || 0), 0);
-  const card = (label, value, sub) => h("div", { className: "stat" }, h("span", { className: "sl", textContent: label }), h("span", { className: "sv", textContent: value }), h("span", { className: "ss", textContent: sub }));
+  let pnl = null;
+  for (const t of POSITIONS) {
+    const q = PX[t.symbol], pv = q && pipValueUsd(t.symbol, q);
+    if (!pv) continue;
+    const pips = (t.side === "buy" ? q.bid - t.price : t.price - q.ask) / q.pip_size;
+    pnl = (pnl ?? 0) + Number(t.lots) * pips * pv;
+  }
+  const open = POSITIONS.length, wait = PENDING.length + DRAFTS.length, n = ACCT_DATA.filter((a) => !a.error).length;
+  const bits = [open + " open", wait + " waiting", n + (n === 1 ? " account" : " accounts")];
   $("stats").replaceChildren(
-    card("Equity", acc.length ? Math.round(equity).toLocaleString("en-US") : "–", acc.length ? "all " + acc.length + " account" + (acc.length === 1 ? "" : "s") : "no accounts linked yet"),
-    card("Open trades", String(open), open ? "right now" : "nothing open"),
-    card("Waiting", String(pend + DRAFTS.length), pend + " pending · " + DRAFTS.length + " draft" + (DRAFTS.length === 1 ? "" : "s")));
+    h("span", { className: "hl", textContent: "Floating P/L" }),
+    h("span", { className: "hv " + (pnl == null ? "muted" : pnl >= 0 ? "long" : "short"), textContent: pnl == null ? (open ? "–" : "No open trades") : money(pnl) }),
+    h("span", { className: "hs", textContent: bits.join(" · ") }));
 }
 
 function watchItems() {
@@ -76,13 +82,13 @@ function watchRow(it) {
       else { right = dist.limit ? "Passed \u00b7 goes at market" : "Passed"; cls = "warn"; }
     }
   }
+  if (it.kind === "pending" && q) detail = pendingDetail(it, q);
   const names = it.ts ? it.ts.map((t) => h("span", { className: "chip", textContent: t.account.replace(/^MOCK /, "") + " · " + t.lots })) : [h("span", { className: "chip", textContent: it.meta })];
   return h("div", { className: "wrow click", tabIndex: 0, onclick: () => go(it), onkeydown: (e) => { if (e.key === "Enter") go(it); } },
     h("div", { className: "wl" },
-      h("div", { className: "wtitle" }, h("b", { textContent: it.symbol }), h("span", { className: it.side === "buy" ? "long" : "short", textContent: it.side === "buy" ? "long" : "short" }),
-        h("span", { className: "wtype", textContent: it.kind === "position" ? "" : it.type }), it.ts && it.ts[0].sim ? h("span", { className: "pill", textContent: "sim" }) : ""),
+      h("div", { className: "wtitle" }, h("b", { textContent: it.symbol }), h("span", { className: it.side === "buy" ? "long" : "short", textContent: it.kind === "position" ? (it.side === "buy" ? "long" : "short") : (it.side === "buy" ? "Buy " : "Sell ") + it.type }), it.ts && it.ts[0].sim ? h("span", { className: "pill", textContent: "sim" }) : ""),
       h("div", { className: "wsub", textContent: sub }),
-      it.kind === "position" ? "" : h("div", { className: "chips" }, ...names)),
+      it.kind === "draft" ? h("div", { className: "chips" }, ...names) : ""),
     h("div", { className: "wr" }, h("div", { className: "wbig " + cls, textContent: right || "–" }), h("div", { className: "wprice", textContent: left })),
     detail || "");
 }
@@ -91,14 +97,29 @@ const money = (v) => (v < 0 ? "−" : "+") + "$" + Math.abs(v).toLocaleString("e
 
 // Under a running position: how far the price is between the stop loss and the take profit, and each account's running result.
 // Left is always the loss side and right the profit side, for longs and shorts alike.
+const zoneBg = (at, sl, tp) => "background:linear-gradient(to right," + (sl ? "color-mix(in srgb,var(--bad) 55%,transparent)" : "var(--soft)") + " " + at + "%," + (tp ? "color-mix(in srgb,var(--good) 55%,transparent)" : "var(--soft)") + " " + at + "%)";
+const noLegs = (sl, tp) => (sl != null && tp != null ? "" : h("div", { className: "plabels" }, h("span", { textContent: sl == null ? "No stop loss" : "" }), h("span", { textContent: tp == null ? "No take profit" : "" })));
+
+// Under an active order: the planned trade (SL .. entry .. TP) with a dot for where the price is now, so the gap to the entry is visible.
+function pendingDetail(it, q) {
+  const buy = it.side === "buy", price = buy ? q.ask : q.bid;
+  const from = (buy ? price - it.entry : it.entry - price) / q.pip_size; // where the price sits against the entry, as profit pips of a trade opened there
+  const slP = it.sl != null ? Math.abs(it.entry - it.sl) / q.pip_size : null, tpP = it.tp != null ? Math.abs(it.tp - it.entry) / q.pip_size : null;
+  const L = Math.max(slP ?? 10, -from * 1.15, 10), R = Math.max(tpP ?? 10, from * 1.15, 10), at = (L / (L + R)) * 100, mark = ((L + from) / (L + R)) * 100;
+  const bar = h("div", { className: "pbar" },
+    h("div", { className: "ptrack", style: zoneBg(at, slP != null, tpP != null) },
+      h("i", { className: "pentry", style: "left:" + at + "%" }), h("i", { className: "pmark now", style: "left:" + mark + "%" })), noLegs(slP, tpP));
+  return h("div", { className: "wdetail" }, bar, ...it.ts.map((t) => h("div", { className: "pacct" }, h("span", { textContent: t.account.replace(/^MOCK /, "") }), h("span", { className: "muted", textContent: t.lots + " lots" }), h("span", {}))));
+}
+
 function positionDetail(it, q, pips) {
   const slP = it.sl != null ? Math.abs(it.entry - it.sl) / q.pip_size : null, tpP = it.tp != null ? Math.abs(it.tp - it.entry) / q.pip_size : null;
   const pad = Math.max(10, Math.abs(pips) * 1.3); // no SL or TP set: show a neutral stretch instead
   const L = slP ?? pad, R = tpP ?? pad, at = (L / (L + R)) * 100;
   const mark = ((L + Math.max(-L, Math.min(R, pips))) / (L + R)) * 100;
   const bar = h("div", { className: "pbar" },
-    h("div", { className: "ptrack", style: "background:linear-gradient(to right,color-mix(in srgb,var(--bad) 55%,transparent) " + at + "%,color-mix(in srgb,var(--good) 55%,transparent) " + at + "%)" },
-      h("i", { className: "pentry", style: "left:" + at + "%" }), h("i", { className: "pmark " + (pips >= 0 ? "up" : "down"), style: "left:" + mark + "%" })));
+    h("div", { className: "ptrack", style: zoneBg(at, slP != null, tpP != null) },
+      h("i", { className: "pentry", style: "left:" + at + "%" }), h("i", { className: "pmark " + (pips >= 0 ? "up" : "down"), style: "left:" + mark + "%" })), noLegs(slP, tpP));
   const pv = pipValueUsd(it.symbol, q);
   let total = null;
   const rows = it.ts.map((t) => {
@@ -120,6 +141,7 @@ function renderWatch() {
   const none = !all.length;
   $("pendPanel").hidden = !of("pending").length; $("draftPanel").hidden = none ? false : !of("draft").length;
   if (none) $("drafts").replaceChildren(h("p", { className: "hint", textContent: "Nothing yet. Tap + to plan an order." }));
+  renderStats();
   const priced = Object.values(PX).filter(Boolean);
   $("watchNote").textContent = !priced.length ? "" : priced.every((p) => p.simulated) ? "Simulated prices: no cTrader account is linked yet." : "Live prices, updated " + new Date().toLocaleTimeString();
 }
