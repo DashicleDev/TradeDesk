@@ -67,7 +67,7 @@ function updateRR() {
 const updateAll = () => { updateEntry(); syncLeg("sl"); syncLeg("tp"); updateRR(); };
 
 for (const k of ["sl", "tp"]) {
-  oe[k + "_on"].onchange = () => { TK.src[k] = "pips"; updateAll(); };
+  oe[k + "_on"].onchange = () => { TK.src[k] = "pips"; if (oe[k + "_on"].checked && oe[k + "_pips"].value === "") oe[k + "_pips"].value = "10"; updateAll(); }; // start at 10 pips so the buttons have something to move
   oe[k + "_pips"].oninput = () => { TK.src[k] = "pips"; updateAll(); };
   oe[k].oninput = () => { TK.src[k] = "price"; updateAll(); };
 }
