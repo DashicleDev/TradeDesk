@@ -43,7 +43,6 @@ $("orderForm").onsubmit = async (e) => {
   msg(""); f.reset(); closeSheet(); loadDrafts();
 };
 
-const parseMap = (t) => Object.fromEntries(t.split("\n").map((l) => l.split("=").map((s) => s.trim())).filter(([a, b]) => a && b));
 const lotText = (t) => ({ fixed: `${t.lot_value} lots`, risk_pct: `${t.lot_value}% of starting size at risk`, balance_pct: `${t.lot_value}% of balance at risk`, multiplier: `${t.lot_value}× order lots`, size_scale: `scaled to account size (reference ${t.lot_value})` })[t.lot_mode];
 const slTpText = (t) => [
   t.fixed_sl_pips ? `SL ${t.fixed_sl_pips} pips` : t.copy_sl ? "SL copied" : "no SL",
@@ -57,7 +56,7 @@ async function loadTemplates() {
   if (error) return msg(error.message, true);
   templates = data;
   $("tplRows").replaceChildren(...(data.length ? data.map((t) => h("tr", {},
-    cell(t.name), cell(lotText(t) + (t.reverse ? ", reversed" : "")),
+    cell(t.name), cell(lotText(t)),
     cell(limitText(t)), cell(slTpText(t)),
     h("td", { className: "r" },
       h("button", { className: "btn small ghost", textContent: "Edit", onclick: () => openTpl(t) }), " ",
@@ -85,7 +84,6 @@ function openTpl(t) {
   if (t) for (const el of tplForm.elements) {
     if (!el.name) continue;
     if (el.type === "checkbox") el.checked = !!t[el.name];
-    else if (el.name === "symbol_map") el.value = Object.entries(t.symbol_map || {}).map(([a, b]) => `${a}=${b}`).join("\n");
     else el.value = t[el.name] ?? "";
   }
   syncLotLbl();
@@ -98,7 +96,7 @@ tplForm.onsubmit = async (e) => {
   e.preventDefault();
   const el = tplForm.elements, v = (n) => el[n].value;
   const row = { name: v("name").trim(), lot_mode: v("lot_mode"), lot_value: num(v("lot_value")), max_open: num(v("max_open")), max_risk_pct: num(v("max_risk_pct")),
-    copy_sl: el.copy_sl.checked, copy_tp: el.copy_tp.checked, reverse: el.reverse.checked, symbol_map: parseMap(v("symbol_map")),
+    copy_sl: el.copy_sl.checked, copy_tp: el.copy_tp.checked,
     fixed_sl_pips: num(v("fixed_sl_pips")), fixed_tp_pips: num(v("fixed_tp_pips")), sl_adjust_pips: num(v("sl_adjust_pips")) ?? 0, tp_adjust_pips: num(v("tp_adjust_pips")) ?? 0,
     min_lots: num(v("min_lots")), max_lots: num(v("max_lots")), expiry_hours: num(v("expiry_hours")), comment: v("comment").trim() || null };
   const { error } = editingTpl ? await sb.from("td_templates").update(row).eq("id", editingTpl) : await sb.from("td_templates").insert(row);

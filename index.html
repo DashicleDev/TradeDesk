@@ -114,14 +114,11 @@
           </div>
         </div></details>
         <details class="acc"><summary>Advanced</summary><div class="accb">
-          <div class="row"><label class="f ck"><input name="reverse" type="checkbox"><span>Reverse direction</span></label></div>
-          <p class="hint">Sends the opposite direction (long becomes short, and the other way round). Stop loss and take profit mirror around the entry.</p>
           <div class="fgrid">
             <label class="f"><span>Minimum lots</span><input name="min_lots" type="number" step="any" min="0" placeholder="off"><small class="fh">If the lots come out smaller, raise them to this. Below the broker's own minimum the account is skipped.</small></label>
             <label class="f"><span>Maximum lots</span><input name="max_lots" type="number" step="any" min="0" placeholder="off"><small class="fh">Cap the lots at this, whatever the lot size rule gives.</small></label>
             <label class="f"><span>Pending order expires after (hours)</span><input name="expiry_hours" type="number" step="any" min="0" placeholder="good till cancelled"><small class="fh">The broker cancels it automatically if it hasn't filled by then. Empty = stays until filled or cancelled.</small></label>
             <label class="f"><span>Order comment</span><input name="comment" maxlength="100"><small class="fh">Text attached to the order at the broker (max 100 characters). Helps you recognise Desk orders.</small></label>
-            <label class="f wide"><span>Symbol mapping (one per line: PAIR=BROKER)</span><textarea name="symbol_map" rows="2" placeholder="XAUUSD=GOLD"></textarea><small class="fh">For brokers that name a pair differently, e.g. XAUUSD=GOLD sends "GOLD" where the order says XAUUSD.</small></label>
           </div>
         </div></details>
         <details class="acc"><summary>Limits</summary><div class="accb">
