@@ -217,7 +217,7 @@ function updateSend() {
   let n = 0, anyEst = false;
   for (const r of TK.rows) {
     const on = TK.sel.has(r.a.id); n += on ? 1 : 0;
-    r.row.classList.toggle("on", on); r.row.setAttribute("aria-checked", on);
+    r.row.classList.toggle("on", on); r.swIn.checked = on;
     const out = on ? lotsFor(r.a, templates.find((x) => x.id === r.sel.value), lots) : { text: "", cls: "" };
     r.res.textContent = out.text; r.res.className = "slots " + out.cls; anyEst = anyEst || !!out.est;
   }
@@ -234,15 +234,17 @@ function renderSendTo() {
     sel.setAttribute("aria-label", "Template for " + a.label);
     sel.value = TK.tpl[a.id] ?? a.default_template_id ?? "";
     const res = h("span", { className: "slots" });
+    const swIn = h("input", { type: "checkbox", checked: TK.sel.has(a.id) });
+    swIn.setAttribute("aria-label", "Send to " + a.label);
+    const swLabel = h("label", { className: "sw" }, swIn);
     // the whole card is the control: tap to select, it lights up; the template picker inside does not toggle it
-    const row = h("div", { className: "scard", tabIndex: 0 },
-      h("div", { className: "shead" }, h("span", { className: "sname", textContent: a.label }), h("span", { className: "pill " + (a.is_live ? "warn" : "ok"), textContent: a.is_live ? "live" : "demo" })),
+    const row = h("div", { className: "scard" },
+      h("div", { className: "shead" }, h("span", { className: "sname", textContent: a.label }), h("span", { className: "pill " + (a.is_live ? "warn" : "ok"), textContent: a.is_live ? "live" : "demo" }), swLabel),
       h("div", { className: "sctl" }, sel, res));
-    row.setAttribute("role", "checkbox");
     const toggle = () => { TK.sel.has(a.id) ? TK.sel.delete(a.id) : TK.sel.add(a.id); updateSend(); };
-    row.onclick = (e) => { if (!e.target.closest("select")) toggle(); };
-    row.onkeydown = (e) => { if (e.target === row && (e.key === " " || e.key === "Enter")) { e.preventDefault(); toggle(); } };
-    TK.rows.push({ a, row, sel, res });
+    swIn.onchange = toggle; // the switch itself
+    row.onclick = (e) => { if (!e.target.closest("select, .sw")) toggle(); }; // the rest of the card is a big tap target too
+    TK.rows.push({ a, row, sel, res, swIn });
     return row;
   }));
   updateSend();
