@@ -90,6 +90,13 @@ async function oneAccount(a: any, token: string) {
 }
 const base = (a: any) => ({ id: a.id, label: a.label, is_live: a.is_live });
 
+// Test rows (td_accounts.is_mock): fake numbers, never contact cTrader. Delete the rows to remove them.
+function mockAccount(a: any) {
+  const n = Number(a.ctid_account_id) % 5;
+  const balance = [10000, 25000, 100000, 50000, 200000][n];
+  return { ...base(a), balance, equity: balance + n * 37 - 60, positions: n % 3, orders: n % 2 };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -129,10 +136,10 @@ Deno.serve(async (req) => {
     if (body.action === "overview") {
       const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).order("created_at");
       if (!accts?.length) return json({ accounts: [] });
-      const token = await accessToken(uid);
+      const token = accts.some((a) => !a.is_mock) ? await accessToken(uid) : "";
       const accounts = [];
       for (const a of accts) { // sequential: stays far below the 50 req/s limit
-        try { accounts.push(await oneAccount(a, token)); }
+        try { accounts.push(a.is_mock ? mockAccount(a) : await oneAccount(a, token)); }
         catch (e) { accounts.push({ ...base(a), error: (e as Error).message }); }
       }
       return json({ accounts });
