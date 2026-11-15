@@ -1,0 +1,6 @@
+body{font:14px system-ui,sans-serif;margin:2rem auto;max-width:900px;padding:0 1rem;background:#0f1115;color:#e6e6e6}
+button{padding:.4rem .9rem;margin-right:.5rem;cursor:pointer}
+input{padding:.4rem;margin-right:.5rem}
+table{width:100%;border-collapse:collapse;margin-top:1rem}
+th,td{text-align:left;padding:.4rem;border-bottom:1px solid #2a2e37}
+.demo{color:#6cc070}.live{color:#e5a13a}.err{color:#e5645a}
