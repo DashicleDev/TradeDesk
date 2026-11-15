@@ -3,9 +3,11 @@
 const h = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
 const num = (v) => (v === "" || v == null ? null : Number(v));
 const cell = (t, cls) => h("td", { textContent: t ?? "", className: cls || "" });
+const numCell = (t) => cell(t, "r num");
+const delBtn = (table, id, reload) => h("td", { className: "r" }, h("button", { className: "btn small ghost danger", textContent: "Delete", onclick: () => del(table, id, reload) }));
 
-document.querySelectorAll(".tabs [data-tab]").forEach((b) => (b.onclick = () => {
-  document.querySelectorAll(".tabs [data-tab]").forEach((x) => x.classList.toggle("on", x === b));
+document.querySelectorAll("nav [data-tab]").forEach((b) => (b.onclick = () => {
+  document.querySelectorAll("nav [data-tab]").forEach((x) => x.setAttribute("aria-selected", x === b));
   ["tOverview", "tIdeas", "tTemplates"].forEach((id) => ($(id).hidden = id !== b.dataset.tab));
 }));
 
@@ -19,9 +21,9 @@ async function del(table, id, reload) {
 async function loadIdeas() {
   const { data, error } = await sb.from("td_ideas").select("*").neq("status", "archived").order("created_at", { ascending: false });
   if (error) return msg(error.message, true);
-  $("ideaRows").replaceChildren(...data.map((i) => h("tr", {},
-    cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short"), cell(i.lots, "num"), cell(i.entry, "num"), cell(i.sl, "num"), cell(i.tp, "num"), cell(i.note),
-    h("td", {}, h("button", { className: "btn", textContent: "Delete", onclick: () => del("td_ideas", i.id, loadIdeas) })))));
+  $("ideaRows").replaceChildren(...(data.length ? data.map((i) => h("tr", {},
+    cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), numCell(i.lots), numCell(i.entry), numCell(i.sl), numCell(i.tp), cell(i.note),
+    delBtn("td_ideas", i.id, loadIdeas))) : [emptyRow(8, "No ideas yet. Save one above.")]));
 }
 
 $("ideaForm").onsubmit = async (e) => {
@@ -41,11 +43,11 @@ async function loadTemplates() {
   const { data, error } = await sb.from("td_templates").select("*").order("created_at");
   if (error) return msg(error.message, true);
   templates = data;
-  $("tplRows").replaceChildren(...data.map((t) => h("tr", {},
+  $("tplRows").replaceChildren(...(data.length ? data.map((t) => h("tr", {},
     cell(t.name), cell(lotText(t) + (t.reverse ? ", reversed" : "")),
-    cell([t.max_open && `max ${t.max_open} open`, t.max_risk_pct && `max ${t.max_risk_pct}% risk`].filter(Boolean).join(", ")),
+    cell([t.max_open && `max ${t.max_open} open`, t.max_risk_pct && `max ${t.max_risk_pct}% risk`].filter(Boolean).join(", ") || "none"),
     cell([t.copy_sl ? "SL" : "no SL", t.copy_tp ? "TP" : "no TP"].join(" / ")),
-    h("td", {}, h("button", { className: "btn", textContent: "Delete", onclick: () => del("td_templates", t.id, () => { loadTemplates(); }) })))));
+    delBtn("td_templates", t.id, loadTemplates))) : [emptyRow(5, "No templates yet. Save one above.")]));
   loadAccounts();
 }
 
@@ -63,12 +65,13 @@ async function loadAccounts() {
   const { data, error } = await sb.from("td_accounts").select("id,label,default_template_id,start_balance").order("created_at");
   if (error) return msg(error.message, true);
   const save = async (id, patch) => { const { error: er } = await sb.from("td_accounts").update(patch).eq("id", id); if (er) msg(er.message, true); };
+  if (!data.length) return $("accRows").replaceChildren(emptyRow(3, "No accounts linked yet."));
   $("accRows").replaceChildren(...data.map((a) => {
     const sel = h("select", { onchange: () => save(a.id, { default_template_id: sel.value || null }) },
       h("option", { value: "", textContent: "none" }), ...templates.map((t) => h("option", { value: t.id, textContent: t.name })));
     sel.value = a.default_template_id || "";
     const bal = h("input", { type: "number", step: "any", min: "0", value: a.start_balance ?? "", onchange: () => save(a.id, { start_balance: num(bal.value) }) });
-    return h("tr", {}, cell(a.label), h("td", {}, sel), h("td", { className: "num" }, bal));
+    return h("tr", {}, cell(a.label), h("td", {}, sel), h("td", { className: "r" }, bal));
   }));
 }
 

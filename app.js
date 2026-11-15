@@ -1,8 +1,11 @@
 // shortcut: no cross-tab auth lock. The journal shares this browser session and a stuck lock left the page blank; if both tabs refresh at once supabase tolerates it (refresh-token reuse window).
 const sb = supabase.createClient(TD.SUPABASE_URL, TD.SUPABASE_ANON_KEY, { auth: { lock: async (_n, _t, fn) => await fn() } });
 const $ = id => document.getElementById(id);
-const msg = (t, err) => { $("msg").textContent = t || ""; $("msg").className = err ? "err" : ""; };
+const msg = (t, err) => { $("msg").textContent = t || ""; $("msg").className = err ? "msg err" : "msg"; };
+const fmt = (n) => (typeof n === "number" ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n);
 const redirectUri = location.origin + location.pathname;
+
+const emptyRow = (cols, text) => { const tr = document.createElement("tr"), td = document.createElement("td"); td.colSpan = cols; td.className = "empty"; td.textContent = text; tr.append(td); return tr; };
 
 async function call(action, body = {}) {
   const { data, error } = await sb.functions.invoke("ctrader", { body: { action, ...body } });
@@ -19,11 +22,17 @@ async function overview() {
       const tr = document.createElement("tr");
       const cells = a.error
         ? [a.label, a.is_live ? "live" : "demo", a.error, "", "", ""]
-        : [a.label, a.is_live ? "live" : "demo", a.balance, a.equity, a.positions, a.orders];
-      cells.forEach((c, i) => { const td = document.createElement("td"); td.textContent = c ?? ""; if (i === 1) td.className = c; else if (i >= 2) td.className = "num"; tr.append(td); });
+        : [a.label, a.is_live ? "live" : "demo", fmt(a.balance), fmt(a.equity), a.positions, a.orders];
+      cells.forEach((c, i) => {
+        const td = document.createElement("td");
+        if (i === 1) { const p = document.createElement("span"); p.className = "pill " + (c === "live" ? "warn" : "ok"); p.textContent = c; td.append(p); }
+        else { td.textContent = c ?? ""; if (i >= 2) td.className = a.error ? "r" : "r num"; }
+        tr.append(td);
+      });
       return tr;
     }));
-    msg(accounts.length ? "" : "No accounts linked yet.");
+    if (!accounts.length) $("rows").replaceChildren(emptyRow(6, "No accounts linked yet. Use “Link cTrader account(s)”."));
+    msg("");
   } catch (e) { msg(e.message, true); }
 }
 
