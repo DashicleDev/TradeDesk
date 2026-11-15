@@ -144,3 +144,11 @@ main{grid-template-columns:minmax(0,1fr)}
 .formfoot.sticky{position:sticky;bottom:0;background:var(--paper);padding:12px 0 16px;margin-top:8px;border-top:1px solid var(--line)}
 .formfoot.sticky .btn{flex:1;padding:12px}
 @media (max-width:480px){.line .stepper{width:200px}.line>input,.subline>input{width:120px}}
+.nudge{display:flex;gap:4px;align-items:center}
+.nudge input{width:92px;text-align:right;font-family:var(--mono)}
+.nudge .btn{padding:4px 7px;min-width:36px;font-size:12px}
+@media (max-width:480px){.nudge input{width:70px}.nudge .btn{min-width:30px;padding:4px 4px}}
+.nudge input{width:110px;padding-left:8px;padding-right:8px}
+@media (max-width:480px){.nudge input{width:86px;font-size:14px}}
+.nudge input,.stepper input,.line>input{-moz-appearance:textfield;appearance:textfield}
+.nudge input::-webkit-outer-spin-button,.nudge input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button,.line>input::-webkit-outer-spin-button,.line>input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}

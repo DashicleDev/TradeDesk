@@ -170,14 +170,14 @@
 
           <div class="line"><span class="lt">Take profit</span><label class="sw"><input type="checkbox" name="tp_on" aria-label="Take profit"></label></div>
           <div id="tpBox" hidden>
-            <label class="subline"><span class="lt">Pips</span><input name="tp_pips" type="number" step="any" min="0"></label>
-            <label class="subline"><span class="lt">Price</span><input name="tp" type="number" step="any"></label>
+            <div class="subline"><span class="lt">Pips</span><div class="nudge" data-leg="tp" data-field="pips"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="tp_pips" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
+            <div class="subline"><span class="lt">Price</span><div class="nudge" data-leg="tp" data-field="price"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="tp" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
           </div>
 
           <div class="line"><span class="lt">Stop loss<small class="fh" id="rr"></small></span><label class="sw"><input type="checkbox" name="sl_on" aria-label="Stop loss"></label></div>
           <div id="slBox" hidden>
-            <label class="subline"><span class="lt">Pips</span><input name="sl_pips" type="number" step="any" min="0"></label>
-            <label class="subline"><span class="lt">Price</span><input name="sl" type="number" step="any"></label>
+            <div class="subline"><span class="lt">Pips</span><div class="nudge" data-leg="sl" data-field="pips"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="sl_pips" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
+            <div class="subline"><span class="lt">Price</span><div class="nudge" data-leg="sl" data-field="price"><button type="button" class="btn small" data-d="-10">−10</button><button type="button" class="btn small" data-d="-1">−1</button><input name="sl" type="number" step="any"><button type="button" class="btn small" data-d="1">+1</button><button type="button" class="btn small" data-d="10">+10</button></div></div>
           </div>
 
           <label class="line"><span class="lt">Pip size<small class="fh" id="pipHint"></small></span><input name="pip" type="number" step="any" min="0" value="0.0001"></label>
