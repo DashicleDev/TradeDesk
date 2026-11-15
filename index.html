@@ -45,27 +45,25 @@
         <h2>Running positions</h2>
         <div id="pos"></div>
       </div>
-      <div class="panel" style="margin-top:20px">
+      <div class="panel" id="pendPanel" style="margin-top:20px" hidden>
         <h2>Active orders</h2>
-        <p class="hint">Pending orders waiting for their price, closest first.</p>
         <div id="pend"></div>
-        <p class="msg" id="watchNote" style="margin-top:8px"></p>
       </div>
-      <div class="panel" style="margin-top:20px">
+      <div class="panel" id="draftPanel" style="margin-top:20px" hidden>
         <h2>Drafts</h2>
-        <p class="hint">Not sent yet. Tap one to open it.</p>
         <div id="drafts"></div>
       </div>
+      <p class="msg" id="watchNote" style="margin-top:12px"></p>
       <div class="panel" style="margin-top:20px">
         <h2>Accounts</h2>
         <p class="hint">Balance, equity and open trades for every linked cTrader account.</p>
         <div class="tbl"><table><thead><tr><th>Account</th><th>Type</th><th class="r">Balance</th><th class="r">Equity</th><th class="r">Open trades</th><th class="r">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
       </div>
-      <div class="panel" style="margin-top:20px">
-        <h2>Send log</h2>
+      <details class="panel logbox" style="margin-top:20px">
+        <summary><h2>Send log</h2></summary>
         <p class="hint">What was sent where, and what the broker answered. Newest first.</p>
         <div class="tbl"><table><thead><tr><th>When</th><th>Account</th><th>Order</th><th>Status</th><th>Answer</th></tr></thead><tbody id="logRows"></tbody></table></div>
-      </div>
+      </details>
     </section>
 
     <section id="tAccounts" hidden>

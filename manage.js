@@ -30,10 +30,14 @@ function openManage(it) {
   $("mLots").textContent = it.ts.map((t) => t.lots).join(" + ") + (it.ts.length > 1 ? " = " + +total.toFixed(2) : "");
   $("mEntry").textContent = it.entry;
   $("mAccts").replaceChildren(...it.ts.map((t, i) => {
-    const card = h("div", { className: "scard on", tabIndex: 0 }, h("div", { className: "shead" }, h("span", { className: "sname", textContent: t.account }), h("span", { className: "muted", textContent: t.lots + " lots" })));
+    const sw = h("input", { type: "checkbox", checked: true });
+    sw.setAttribute("aria-label", "Apply to " + t.account);
+    const card = h("div", { className: "scard on", tabIndex: 0 }, h("div", { className: "shead" }, h("span", { className: "sname", textContent: t.account }), h("label", { className: "sw" }, sw)), h("div", { className: "sctl" }, h("span", { className: "slots", textContent: t.lots + " lots" })));
     card.dataset.mi = i;
-    const flip = () => { card.classList.toggle("on"); updateManage(); };
-    card.onclick = flip; card.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } };
+    const set = (on) => { card.classList.toggle("on", on); sw.checked = on; updateManage(); };
+    sw.onchange = () => set(sw.checked);
+    card.onclick = (e) => { if (!e.target.closest(".sw")) set(!card.classList.contains("on")); };
+    card.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set(!card.classList.contains("on")); } };
     return card;
   }));
   for (const k of ["tp", "sl"]) { // start from what the accounts hold; if they differ the leg starts off and says so
@@ -94,8 +98,9 @@ manageSheet.addEventListener("click", (e) => {
   else { const cur = Number(mIn(k, "price").value) || MG.entry; mIn(k, "price").value = (cur + d * p).toFixed(mDec()); setFromPrice(k); }
   ML[k].dirty = true; updateManage();
 });
-$("mAll").onclick = () => { manageSheet.querySelectorAll("[data-mi]").forEach((c) => c.classList.add("on")); updateManage(); };
-$("mNone").onclick = () => { manageSheet.querySelectorAll("[data-mi]").forEach((c) => c.classList.remove("on")); updateManage(); };
+const mAll = (on) => { manageSheet.querySelectorAll("[data-mi]").forEach((c) => { c.classList.toggle("on", on); c.querySelector("input").checked = on; }); updateManage(); };
+$("mAll").onclick = () => mAll(true);
+$("mNone").onclick = () => mAll(false);
 
 async function manageDo(fn) {
   $("mMsg").textContent = "";

@@ -11,7 +11,7 @@ function renderStats() {
   const pend = PENDING.length || acc.reduce((s, a) => s + (a.orders || 0), 0);
   const card = (label, value, sub) => h("div", { className: "stat" }, h("span", { className: "sl", textContent: label }), h("span", { className: "sv", textContent: value }), h("span", { className: "ss", textContent: sub }));
   $("stats").replaceChildren(
-    card("Equity", acc.length ? Math.round(equity).toLocaleString() : "–", acc.length ? "all " + acc.length + " account" + (acc.length === 1 ? "" : "s") : "no accounts linked yet"),
+    card("Equity", acc.length ? Math.round(equity).toLocaleString("en-US") : "–", acc.length ? "all " + acc.length + " account" + (acc.length === 1 ? "" : "s") : "no accounts linked yet"),
     card("Open trades", String(open), open ? "right now" : "nothing open"),
     card("Waiting", String(pend + DRAFTS.length), pend + " pending · " + DRAFTS.length + " draft" + (DRAFTS.length === 1 ? "" : "s")));
 }
@@ -55,7 +55,7 @@ const pipsOf = (it, v) => {
 const go = (it) => (it.kind === "draft" ? openOrder(it.d) : openManage(it));
 function watchRow(it) {
   const sl = pipsOf(it, it.sl), tp = pipsOf(it, it.tp);
-  const sub = (it.ts ? it.ts.map((t) => t.lots).join(" + ") + " lots \u00b7 " : "") + "entry " + it.entry + (sl ? " \u00b7 SL " + sl : "") + (tp ? " \u00b7 TP " + tp : "") + (sl || tp ? " pips" : "");
+  const sub = "entry " + it.entry + (sl ? " \u00b7 SL " + sl : "") + (tp ? " \u00b7 TP " + tp : "") + (sl || tp ? " pips" : "");
   let left = "No price yet", right = "", cls = "", btns = [];
   const q = PX[it.symbol];
   if (it.kind === "position") {
@@ -73,14 +73,14 @@ function watchRow(it) {
       else { right = dist.limit ? "Passed \u00b7 goes at market" : "Passed"; cls = "warn"; }
     }
   }
-  const open = true; // drafts open the ticket, running and pending trades open the manage menu
-  return h("div", { className: "wrow" + (open ? " click" : ""), tabIndex: open ? 0 : -1, onclick: () => go(it), onkeydown: (e) => { if (e.key === "Enter") go(it); } },
-    h("div", { className: "wmain" },
+  const names = it.ts ? it.ts.map((t) => h("span", { className: "chip", textContent: t.account.replace(/^MOCK /, "") + " · " + t.lots })) : [h("span", { className: "chip", textContent: it.meta })];
+  return h("div", { className: "wrow click", tabIndex: 0, onclick: () => go(it), onkeydown: (e) => { if (e.key === "Enter") go(it); } },
+    h("div", { className: "wl" },
       h("div", { className: "wtitle" }, h("b", { textContent: it.symbol }), h("span", { className: it.side === "buy" ? "long" : "short", textContent: it.side === "buy" ? "long" : "short" }),
         h("span", { className: "wtype", textContent: it.kind === "position" ? "" : it.type }), it.ts && it.ts[0].sim ? h("span", { className: "pill", textContent: "sim" }) : ""),
-      h("div", { className: "wsub", textContent: sub })),
-    h("div", { className: "wtext" }, h("span", { textContent: left }), h("span", { className: cls, textContent: right })),
-    h("div", { className: "wmeta" }, h("span", { textContent: it.meta || it.ts.map((t) => t.account).join(", ") }), ...btns));
+      h("div", { className: "wsub", textContent: sub }),
+      h("div", { className: "chips" }, ...names)),
+    h("div", { className: "wr" }, h("div", { className: "wbig " + cls, textContent: right || "–" }), h("div", { className: "wprice", textContent: left })));
 }
 
 function renderWatch() {
@@ -89,8 +89,10 @@ function renderWatch() {
   const fill = (id, list, none) => $(id).replaceChildren(...(list.length ? list.map(watchRow) : [h("p", { className: "hint", textContent: none })]));
   fill("pos", of("position"), "");
   $("posPanel").hidden = !POSITIONS.length;
-  fill("pend", of("pending"), "No pending orders. Send a draft to an account to see it here.");
-  fill("drafts", of("draft"), "No drafts. Tap + to plan an order.");
+  fill("pend", of("pending"), ""); fill("drafts", of("draft"), "");
+  const none = !all.length;
+  $("pendPanel").hidden = !of("pending").length; $("draftPanel").hidden = none ? false : !of("draft").length;
+  if (none) $("drafts").replaceChildren(h("p", { className: "hint", textContent: "Nothing yet. Tap + to plan an order." }));
   const priced = Object.values(PX).filter(Boolean);
   $("watchNote").textContent = !priced.length ? "" : priced.every((p) => p.simulated) ? "Simulated prices: no cTrader account is linked yet." : "Live prices, updated " + new Date().toLocaleTimeString();
 }
