@@ -1,4 +1,4 @@
-// Step 2: ideas + templates. No sending yet. Straight supabase-js calls; row-level security does the locking.
+// Step 2: orders (saved as drafts until sent) + templates. No sending yet. Straight supabase-js calls; row-level security does the locking.
 // Uses sb, $, msg from app.js. User text goes in via textContent only.
 const h = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
 const num = (v) => (v === "" || v == null ? null : Number(v));
@@ -13,7 +13,7 @@ document.querySelectorAll("nav [data-tab]").forEach((b) => (b.onclick = () => {
 
 // "+" opens the order form as a bottom sheet (same pattern as the journal's trade form)
 const sheet = $("orderSheet");
-const openSheet = () => { sheet.hidden = false; $("ideaForm").symbol.focus(); };
+const openSheet = () => { sheet.hidden = false; $("orderForm").symbol.focus(); };
 const closeSheet = () => { sheet.hidden = true; };
 $("fab").onclick = openSheet;
 sheet.querySelectorAll("[data-close]").forEach((b) => (b.onclick = closeSheet));
@@ -26,25 +26,25 @@ async function del(table, id, reload) {
   reload();
 }
 
-async function loadIdeas() {
-  const { data, error } = await sb.from("td_ideas").select("*").neq("status", "archived").order("created_at", { ascending: false });
+async function loadDrafts() {
+  const { data, error } = await sb.from("td_orders").select("*").eq("status", "draft").order("created_at", { ascending: false });
   if (error) return msg(error.message, true);
-  $("ideaRows").replaceChildren(...(data.length ? data.map((i) => h("tr", {},
+  $("draftRows").replaceChildren(...(data.length ? data.map((i) => h("tr", {},
     cell(i.symbol), cell(i.side === "buy" ? "Long" : "Short", i.side === "buy" ? "long" : "short"), numCell(i.lots), numCell(i.entry), numCell(i.sl), numCell(i.tp), cell(i.note),
-    delBtn("td_ideas", i.id, loadIdeas))) : [emptyRow(8, "No ideas yet. Save one above.")]));
+    delBtn("td_orders", i.id, loadDrafts))) : [emptyRow(8, "No drafts yet. Use the + button.")]));
 }
 
-$("ideaForm").onsubmit = async (e) => {
+$("orderForm").onsubmit = async (e) => {
   e.preventDefault();
   const f = e.target;
   const row = { symbol: f.symbol.value.trim().toUpperCase(), side: f.side.value, lots: num(f.lots.value), entry: num(f.entry.value), sl: num(f.sl.value), tp: num(f.tp.value), note: f.note.value.trim() || null };
-  const { error } = await sb.from("td_ideas").insert(row);
+  const { error } = await sb.from("td_orders").insert(row);
   if (error) return msg(error.code === "23514" ? "SL must be on the losing side of entry and TP on the winning side." : error.message, true);
-  msg(""); f.reset(); closeSheet(); loadIdeas();
+  msg(""); f.reset(); closeSheet(); loadDrafts();
 };
 
 const parseMap = (t) => Object.fromEntries(t.split("\n").map((l) => l.split("=").map((s) => s.trim())).filter(([a, b]) => a && b));
-const lotText = (t) => ({ fixed: `${t.lot_value} lots`, risk_pct: `${t.lot_value}% at risk`, multiplier: `${t.lot_value}× idea` })[t.lot_mode];
+const lotText = (t) => ({ fixed: `${t.lot_value} lots`, risk_pct: `${t.lot_value}% at risk`, multiplier: `${t.lot_value}× order lots` })[t.lot_mode];
 
 let templates = [];
 async function loadTemplates() {
@@ -90,4 +90,4 @@ async function loadAccounts() {
   }));
 }
 
-function loadDesk() { loadIdeas(); loadTemplates(); }
+function loadDesk() { loadDrafts(); loadTemplates(); }

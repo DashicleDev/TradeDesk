@@ -45,9 +45,14 @@
         <div class="tbl"><table><thead><tr><th>Account</th><th>Type</th><th class="r">Balance</th><th class="r">Equity</th><th class="r">Open trades</th><th class="r">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
       </div>
       <div class="panel" style="margin-top:20px">
-        <h2>Saved ideas</h2>
-        <p class="hint">Setups you saved with the + button.</p>
-        <div class="tbl"><table><thead><tr><th>Pair</th><th>Side</th><th class="r">Lots</th><th class="r">Entry</th><th class="r">SL</th><th class="r">TP</th><th>Note</th><th></th></tr></thead><tbody id="ideaRows"></tbody></table></div>
+        <h2>Active orders</h2>
+        <p class="hint">Open trades and pending orders at the broker, all accounts in one list. Details for real cTrader accounts arrive with step 3; mock accounts show samples.</p>
+        <div class="tbl"><table><thead><tr><th>Account</th><th>Pair</th><th>Side</th><th>Status</th><th class="r">Lots</th><th class="r">Price</th><th class="r">SL</th><th class="r">TP</th></tr></thead><tbody id="activeRows"></tbody></table></div>
+      </div>
+      <div class="panel" style="margin-top:20px">
+        <h2>Drafts</h2>
+        <p class="hint">Orders you saved but haven't sent. Create one with the + button.</p>
+        <div class="tbl"><table><thead><tr><th>Pair</th><th>Side</th><th class="r">Lots</th><th class="r">Entry</th><th class="r">SL</th><th class="r">TP</th><th>Note</th><th></th></tr></thead><tbody id="draftRows"></tbody></table></div>
       </div>
     </section>
 
@@ -91,7 +96,7 @@
   <div class="sheet" id="orderSheet" hidden>
     <div class="scrim" data-close></div>
     <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="oTitle">
-      <form id="ideaForm" autocomplete="off">
+      <form id="orderForm" autocomplete="off">
         <div class="formhead">
           <span class="chip">Pending order</span>
           <h3 id="oTitle">New order</h3>
@@ -112,10 +117,10 @@
         <fieldset>
           <legend>Send to</legend>
           <div id="sendTo"></div>
-          <p class="hint" style="margin:8px 0 0">Sending to accounts arrives in step 3. For now an order is saved as an idea. Check your prop firm's rules before sending one trade to several of its accounts.</p>
+          <p class="hint" style="margin:8px 0 0">Sending to accounts arrives in step 3. For now an order is saved as a draft. Check your prop firm's rules before sending one trade to several of its accounts.</p>
         </fieldset>
         <div class="formfoot">
-          <button class="btn primary" type="submit">Save idea</button>
+          <button class="btn primary" type="submit">Save draft</button>
           <button class="btn" type="button" disabled title="Coming in step 3">Review &amp; send</button>
         </div>
       </form>

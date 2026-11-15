@@ -32,6 +32,19 @@ async function overview() {
       return tr;
     }));
     if (!accounts.length) $("rows").replaceChildren(emptyRow(6, "No accounts linked yet. Link one on the Accounts tab."));
+    const trades = accounts.flatMap((a) => (a.trades || []).map((t) => ({ ...t, account: a.label })));
+    $("activeRows").replaceChildren(...(trades.length ? trades.map((t) => {
+      const tr = document.createElement("tr");
+      [t.account, t.symbol, t.side === "buy" ? "Long" : "Short", t.kind === "pending" ? "Pending" : "Open", t.lots, t.price, t.sl, t.tp].forEach((c, i) => {
+        const td = document.createElement("td");
+        td.textContent = c ?? "";
+        if (i === 2) td.className = t.side === "buy" ? "long" : "short";
+        else if (i === 3) { td.textContent = ""; const p = document.createElement("span"); p.className = "pill" + (t.kind === "pending" ? "" : " ok"); p.textContent = c; td.append(p); }
+        else if (i >= 4) td.className = "r num";
+        tr.append(td);
+      });
+      return tr;
+    }) : [emptyRow(8, "No open trades or pending orders.")]));
     msg("");
   } catch (e) { msg(e.message, true); }
 }

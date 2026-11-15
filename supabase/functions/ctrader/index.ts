@@ -94,7 +94,12 @@ const base = (a: any) => ({ id: a.id, label: a.label, is_live: a.is_live });
 function mockAccount(a: any) {
   const n = Number(a.ctid_account_id) % 5;
   const balance = [10000, 25000, 100000, 50000, 200000][n];
-  return { ...base(a), balance, equity: balance + n * 37 - 60, positions: n % 3, orders: n % 2 };
+  const positions = n % 3, orders = n % 2;
+  const trades = [
+    ...Array.from({ length: positions }, (_, i) => ({ kind: "position", symbol: ["EURUSD", "GBPJPY"][i % 2], side: i % 2 ? "sell" : "buy", lots: 0.5, price: 1.085 + i * 0.001, sl: 1.082, tp: 1.092 })),
+    ...Array.from({ length: orders }, () => ({ kind: "pending", symbol: "GBPUSD", side: "sell", lots: 1, price: 1.275, sl: 1.281, tp: 1.262 })),
+  ];
+  return { ...base(a), balance, equity: balance + n * 37 - 60, positions, orders, trades };
 }
 
 Deno.serve(async (req) => {
