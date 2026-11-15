@@ -8,8 +8,16 @@ const delBtn = (table, id, reload) => h("td", { className: "r" }, h("button", { 
 
 document.querySelectorAll("nav [data-tab]").forEach((b) => (b.onclick = () => {
   document.querySelectorAll("nav [data-tab]").forEach((x) => x.setAttribute("aria-selected", x === b));
-  ["tOverview", "tIdeas", "tTemplates"].forEach((id) => ($(id).hidden = id !== b.dataset.tab));
+  ["tDash", "tAccounts", "tTemplates"].forEach((id) => ($(id).hidden = id !== b.dataset.tab));
 }));
+
+// "+" opens the order form as a bottom sheet (same pattern as the journal's trade form)
+const sheet = $("orderSheet");
+const openSheet = () => { sheet.hidden = false; $("ideaForm").symbol.focus(); };
+const closeSheet = () => { sheet.hidden = true; };
+$("fab").onclick = openSheet;
+sheet.querySelectorAll("[data-close]").forEach((b) => (b.onclick = closeSheet));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) closeSheet(); });
 
 async function del(table, id, reload) {
   if (!confirm("Delete this?")) return;
@@ -32,7 +40,7 @@ $("ideaForm").onsubmit = async (e) => {
   const row = { symbol: f.symbol.value.trim().toUpperCase(), side: f.side.value, lots: num(f.lots.value), entry: num(f.entry.value), sl: num(f.sl.value), tp: num(f.tp.value), note: f.note.value.trim() || null };
   const { error } = await sb.from("td_ideas").insert(row);
   if (error) return msg(error.code === "23514" ? "SL must be on the losing side of entry and TP on the winning side." : error.message, true);
-  msg(""); f.reset(); loadIdeas();
+  msg(""); f.reset(); closeSheet(); loadIdeas();
 };
 
 const parseMap = (t) => Object.fromEntries(t.split("\n").map((l) => l.split("=").map((s) => s.trim())).filter(([a, b]) => a && b));
@@ -62,8 +70,15 @@ $("tplForm").onsubmit = async (e) => {
 };
 
 async function loadAccounts() {
-  const { data, error } = await sb.from("td_accounts").select("id,label,default_template_id,start_balance").order("created_at");
+  const { data, error } = await sb.from("td_accounts").select("id,label,is_live,default_template_id,start_balance").order("created_at");
   if (error) return msg(error.message, true);
+  // "Send to" list in the order form: pick accounts and a template per account (sending itself is step 3)
+  $("sendTo").replaceChildren(...(data.length ? data.map((a) => {
+    const sel = h("select", {}, h("option", { value: "", textContent: "no template" }), ...templates.map((t) => h("option", { value: t.id, textContent: t.name })));
+    sel.value = a.default_template_id || "";
+    return h("div", { className: "sendrow" }, h("input", { type: "checkbox", value: a.id }), h("span", { textContent: a.label }),
+      h("span", { className: "pill " + (a.is_live ? "warn" : "ok"), textContent: a.is_live ? "live" : "demo" }), sel);
+  }) : [h("p", { className: "hint", textContent: "No accounts linked yet." })]));
   const save = async (id, patch) => { const { error: er } = await sb.from("td_accounts").update(patch).eq("id", id); if (er) msg(er.message, true); };
   if (!data.length) return $("accRows").replaceChildren(emptyRow(3, "No accounts linked yet."));
   $("accRows").replaceChildren(...data.map((a) => {

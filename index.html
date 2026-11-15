@@ -29,8 +29,8 @@
       <span class="acct"><button class="btn small ghost" id="refresh">Refresh</button><button class="btn small ghost" id="logout">Sign out</button></span>
     </div>
     <nav role="tablist">
-      <button role="tab" data-tab="tOverview" aria-selected="true">Overview</button>
-      <button role="tab" data-tab="tIdeas" aria-selected="false">Ideas</button>
+      <button role="tab" data-tab="tDash" aria-selected="true">Dashboard</button>
+      <button role="tab" data-tab="tAccounts" aria-selected="false">Accounts</button>
       <button role="tab" data-tab="tTemplates" aria-selected="false">Templates</button>
     </nav>
   </header>
@@ -38,41 +38,36 @@
   <main>
     <p class="msg" id="msg"></p>
 
-    <section id="tOverview" class="panel">
-      <h2>Accounts</h2>
-      <p class="hint">Balance, equity and open trades for every linked cTrader account.</p>
-      <div class="row" style="margin-bottom:16px"><button class="btn primary" id="link">Link cTrader account(s)</button></div>
-      <div class="tbl"><table><thead><tr><th>Account</th><th>Type</th><th class="r">Balance</th><th class="r">Equity</th><th class="r">Open trades</th><th class="r">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
-    </section>
-
-    <section id="tIdeas" hidden>
-      <form class="panel" id="ideaForm">
-        <h2>New idea</h2>
-        <p class="hint">A saved setup. With an entry price it becomes a pending order when you send it.</p>
-        <div class="fgrid">
-          <label class="f"><span>Pair</span><input name="symbol" placeholder="EURUSD" required></label>
-          <label class="f"><span>Side</span><select name="side"><option value="buy">Long</option><option value="sell">Short</option></select></label>
-          <label class="f"><span>Lots</span><input name="lots" type="number" step="any" min="0" required></label>
-          <label class="f"><span>Entry</span><input name="entry" type="number" step="any" required></label>
-          <label class="f"><span>Stop loss</span><input name="sl" type="number" step="any"></label>
-          <label class="f"><span>Take profit</span><input name="tp" type="number" step="any"></label>
-          <label class="f wide"><span>Note</span><input name="note"></label>
-        </div>
-        <button class="btn primary" type="submit">Save idea</button>
-      </form>
+    <section id="tDash">
+      <div class="panel">
+        <h2>Accounts</h2>
+        <p class="hint">Balance, equity and open trades for every linked cTrader account.</p>
+        <div class="tbl"><table><thead><tr><th>Account</th><th>Type</th><th class="r">Balance</th><th class="r">Equity</th><th class="r">Open trades</th><th class="r">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
+      </div>
       <div class="panel" style="margin-top:20px">
         <h2>Saved ideas</h2>
+        <p class="hint">Setups you saved with the + button.</p>
         <div class="tbl"><table><thead><tr><th>Pair</th><th>Side</th><th class="r">Lots</th><th class="r">Entry</th><th class="r">SL</th><th class="r">TP</th><th>Note</th><th></th></tr></thead><tbody id="ideaRows"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="tAccounts" hidden>
+      <div class="panel">
+        <h2>Linked accounts</h2>
+        <p class="hint">Link your cTrader ID once. You log in on cTrader's own page; Desk never sees your broker password.</p>
+        <div class="row" style="margin-bottom:16px"><button class="btn primary" id="link">Link cTrader account(s)</button></div>
+        <div class="tbl"><table><thead><tr><th>Account</th><th>Default template</th><th class="r">Starting size</th></tr></thead><tbody id="accRows"></tbody></table></div>
+        <p class="hint" style="margin:12px 0 0">The default template is used when you send an order; you can override it per order. Starting size is what "% at risk" is measured against.</p>
       </div>
     </section>
 
     <section id="tTemplates" hidden>
       <form class="panel" id="tplForm">
         <h2>New template</h2>
-        <p class="hint">A recipe for turning an idea into an order on one account.</p>
+        <p class="hint">A recipe for turning an order into one account's order.</p>
         <div class="fgrid">
           <label class="f"><span>Name</span><input name="name" required></label>
-          <label class="f"><span>Lot size</span><select name="lot_mode"><option value="fixed">Fixed lots</option><option value="risk_pct">% of starting size at risk</option><option value="multiplier">Multiple of idea lots</option></select></label>
+          <label class="f"><span>Lot size</span><select name="lot_mode"><option value="fixed">Fixed lots</option><option value="risk_pct">% of starting size at risk</option><option value="multiplier">Multiple of order lots</option></select></label>
           <label class="f"><span>Value</span><input name="lot_value" type="number" step="any" min="0" required></label>
           <label class="f"><span>Max open trades</span><input name="max_open" type="number" min="1"></label>
           <label class="f"><span>Max risk % per account</span><input name="max_risk_pct" type="number" step="any" min="0"></label>
@@ -81,7 +76,7 @@
             <label class="f ck"><input name="copy_tp" type="checkbox" checked><span>Copy TP</span></label>
             <label class="f ck"><input name="reverse" type="checkbox"><span>Reverse direction</span></label>
           </div>
-          <label class="f wide"><span>Symbol mapping (one per line: IDEA=BROKER)</span><textarea name="symbol_map" rows="2" placeholder="XAUUSD=GOLD"></textarea></label>
+          <label class="f wide"><span>Symbol mapping (one per line: PAIR=BROKER)</span><textarea name="symbol_map" rows="2" placeholder="XAUUSD=GOLD"></textarea></label>
         </div>
         <button class="btn primary" type="submit">Save template</button>
       </form>
@@ -89,13 +84,43 @@
         <h2>Templates</h2>
         <div class="tbl"><table><thead><tr><th>Name</th><th>Lots</th><th>Limits</th><th>SL / TP</th><th></th></tr></thead><tbody id="tplRows"></tbody></table></div>
       </div>
-      <div class="panel" style="margin-top:20px">
-        <h2>Account defaults</h2>
-        <p class="hint">Each account's default template and starting size (used by "% at risk"). You can override the template when sending.</p>
-        <div class="tbl"><table><thead><tr><th>Account</th><th>Default template</th><th class="r">Starting size</th></tr></thead><tbody id="accRows"></tbody></table></div>
-      </div>
     </section>
   </main>
+
+  <button type="button" class="fab" id="fab" aria-label="New order">+</button>
+  <div class="sheet" id="orderSheet" hidden>
+    <div class="scrim" data-close></div>
+    <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="oTitle">
+      <form id="ideaForm" autocomplete="off">
+        <div class="formhead">
+          <span class="chip">Pending order</span>
+          <h3 id="oTitle">New order</h3>
+          <button type="button" class="btn small ghost closex" data-close>Close</button>
+        </div>
+        <fieldset>
+          <legend>Setup</legend>
+          <div class="fgrid">
+            <label class="f"><span>Pair</span><input name="symbol" placeholder="EURUSD" required></label>
+            <label class="f"><span>Side</span><select name="side"><option value="buy">Long</option><option value="sell">Short</option></select></label>
+            <label class="f"><span>Lots</span><input name="lots" type="number" step="any" min="0" required></label>
+            <label class="f"><span>Entry</span><input name="entry" type="number" step="any" required></label>
+            <label class="f"><span>Stop loss</span><input name="sl" type="number" step="any"></label>
+            <label class="f"><span>Take profit</span><input name="tp" type="number" step="any"></label>
+            <label class="f wide"><span>Note</span><input name="note"></label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Send to</legend>
+          <div id="sendTo"></div>
+          <p class="hint" style="margin:8px 0 0">Sending to accounts arrives in step 3. For now an order is saved as an idea. Check your prop firm's rules before sending one trade to several of its accounts.</p>
+        </fieldset>
+        <div class="formfoot">
+          <button class="btn primary" type="submit">Save idea</button>
+          <button class="btn" type="button" disabled title="Coming in step 3">Review &amp; send</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>

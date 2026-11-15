@@ -31,7 +31,7 @@ async function overview() {
       });
       return tr;
     }));
-    if (!accounts.length) $("rows").replaceChildren(emptyRow(6, "No accounts linked yet. Use “Link cTrader account(s)”."));
+    if (!accounts.length) $("rows").replaceChildren(emptyRow(6, "No accounts linked yet. Link one on the Accounts tab."));
     msg("");
   } catch (e) { msg(e.message, true); }
 }
