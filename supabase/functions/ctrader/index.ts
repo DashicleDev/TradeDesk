@@ -126,6 +126,14 @@ function mockAccount(a: any) {
   return { ...base(a), balance, equity: balance + n * 37 - 60, positions: 0, orders: 0, trades: [] };
 }
 
+// Mock account plus its simulated orders and positions (td_sim)
+async function simAccount(uid: string, a: any) {
+  const m = mockAccount(a);
+  const { data } = await admin.from("td_sim").select("*").eq("user_id", uid).eq("account_id", a.id).neq("status", "closed").order("created_at");
+  const trades = (data ?? []).map((t: any) => ({ id: t.id, sim: true, kind: t.status === "open" ? "position" : "pending", symbol: t.symbol, side: t.side, lots: Number(t.lots), price: Number(t.entry), sl: t.sl == null ? null : Number(t.sl), tp: t.tp == null ? null : Number(t.tp) }));
+  return { ...m, trades, positions: trades.filter((t) => t.kind === "position").length, orders: trades.filter((t) => t.kind === "pending").length };
+}
+
 // ---- symbol details and live price
 const symCache = new Map<string, any>(); // symbol details rarely change; cached per instance
 async function symbolInfo(c: any, id: number, sym: string) {
@@ -283,6 +291,7 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
             else { status = "rejected"; message = m; }
           }
         }
+        if (a.is_mock) await admin.from("td_sim").insert({ user_id: uid, account_id: a.id, symbol: order.symbol, side: order.side, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, status: p.orderType === "market" ? "open" : "pending" });
         await admin.from("td_send_log").update({ status, message, broker_response: response }).eq("id", row.id);
         return rows.push({ ...shown, ok: status === "sent" || status === "simulated", reason: status === "sent" || status === "simulated" ? undefined : message, message, status });
       };
@@ -364,13 +373,21 @@ Deno.serve(async (req) => {
       return json(await runOrder(uid, String(body.order_id ?? ""), body.action, Array.isArray(body.expected) ? body.expected : []));
     }
 
+    if (body.action === "sim_fill" || body.action === "sim_close") { // simulated trades only: fill a waiting order now, or close a position / cancel an order
+      const { data: t } = await admin.from("td_sim").select("*").eq("id", String(body.id ?? "")).eq("user_id", uid).neq("status", "closed").maybeSingle();
+      if (!t) return json({ error: "no such simulated trade" }, 404);
+      if (body.action === "sim_fill") { if (t.status !== "pending") return json({ error: "already running" }, 400); await admin.from("td_sim").update({ status: "open" }).eq("id", t.id); }
+      else { const q = mockQuote(t.symbol); await admin.from("td_sim").update({ status: "closed", close_price: t.status === "open" ? (t.side === "buy" ? q.bid : q.ask) : null }).eq("id", t.id); }
+      return json({ ok: true });
+    }
+
     if (body.action === "overview") {
       const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).order("created_at");
       if (!accts?.length) return json({ accounts: [] });
       const token = accts.some((a) => !a.is_mock) ? await accessToken(uid) : "";
       const accounts = [];
       for (const a of accts) { // sequential: stays far below the 50 req/s limit
-        try { accounts.push(a.is_mock ? mockAccount(a) : await oneAccount(a, token)); }
+        try { accounts.push(a.is_mock ? await simAccount(uid, a) : await oneAccount(a, token)); }
         catch (e) { accounts.push({ ...base(a), error: (e as Error).message }); }
       }
       return json({ accounts });

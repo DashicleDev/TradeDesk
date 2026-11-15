@@ -1,13 +1,13 @@
 // Dashboard: the headline numbers and the watchlist: your drafts and the pending orders at the broker, each with how far the price
 // is from its entry, live. Uses sb, call, $, h, num, openOrder, pipsBetween (earlier files).
-let DRAFTS = [], PENDING = [], ACCT_DATA = []; // filled by loadDrafts (desk.js) and overview (app.js)
+let DRAFTS = [], PENDING = [], POSITIONS = [], ACCT_DATA = []; // filled by loadDrafts (desk.js) and overview (app.js)
 const PX = {}; // symbol -> { bid, ask, digits, pip_size, simulated } or null when there is no price
 const WATCH_MAX = 6; // symbols priced per round: each one is a call to the function
 
 function renderStats() {
   const acc = ACCT_DATA.filter((a) => !a.error);
   const equity = acc.reduce((s, a) => s + (a.equity || 0), 0);
-  const open = acc.reduce((s, a) => s + (a.positions || 0), 0);
+  const open = POSITIONS.length || acc.reduce((s, a) => s + (a.positions || 0), 0);
   const pend = PENDING.length || acc.reduce((s, a) => s + (a.orders || 0), 0);
   const card = (label, value, sub) => h("div", { className: "stat" }, h("span", { className: "sl", textContent: label }), h("span", { className: "sv", textContent: value }), h("span", { className: "ss", textContent: sub }));
   $("stats").replaceChildren(
@@ -19,7 +19,8 @@ function renderStats() {
 function watchItems() {
   const items = DRAFTS.map((d) => ({ kind: "draft", d, symbol: d.symbol, side: d.side, entry: Number(d.entry), sl: d.sl, tp: d.tp, ref: d.entry_ref, type: d.order_type,
     meta: (d.targets || []).length ? d.targets.length + (d.targets.length === 1 ? " account" : " accounts") : "no accounts yet" }));
-  PENDING.forEach((t) => items.push({ kind: "pending", symbol: t.symbol, side: t.side, entry: Number(t.price), sl: t.sl, tp: t.tp, ref: null, type: t.orderType || "limit", meta: t.account }));
+  PENDING.forEach((t) => items.push({ kind: "pending", t, symbol: t.symbol, side: t.side, entry: Number(t.price), sl: t.sl, tp: t.tp, ref: null, type: t.orderType || "limit", meta: t.account }));
+  POSITIONS.forEach((t) => items.push({ kind: "position", t, symbol: t.symbol, side: t.side, entry: Number(t.price), sl: t.sl, tp: t.tp, meta: t.account }));
   return items;
 }
 
@@ -34,9 +35,7 @@ function distance(it) {
   const waiting = limit ? (buy ? it.entry < price : it.entry > price) : (buy ? it.entry > price : it.entry < price);
   const away = Math.abs(it.entry - price) / q.pip_size;
   const state = away < 1e-9 ? "at" : waiting ? "waiting" : "passed";
-  const total = was != null ? Math.abs(it.entry - was) / q.pip_size : 0;
-  const done = state !== "waiting" ? 1 : total > 0 ? Math.max(0, Math.min(1, 1 - away / total)) : null; // how much of the way to the entry the price has come
-  return { away, state, done, limit, price: price.toFixed(q.digits) };
+  return { away, state, limit, price: price.toFixed(q.digits) };
 }
 
 const pipsOf = (it, v) => {
@@ -45,33 +44,52 @@ const pipsOf = (it, v) => {
   return q ? String(Math.round((Math.abs(it.entry - v) / q.pip_size) * 10) / 10) : pipsBetween(it.symbol, it.entry, v);
 };
 
+async function simAct(action, id) {
+  try { await call(action, { id }); overview(); } catch (e) { msg(e.message, true); }
+}
+
 function watchRow(it) {
-  const dist = distance(it), sl = pipsOf(it, it.sl), tp = pipsOf(it, it.tp);
-  const sub = "entry " + it.entry + (sl ? " · SL " + sl : "") + (tp ? " · TP " + tp : "") + (sl || tp ? " pips" : "");
-  let left = "No price yet", right = "", cls = "", bar = null;
-  if (dist) {
-    left = "Price " + dist.price;
-    if (dist.state === "waiting") right = dist.away.toFixed(1) + " pips away";
-    else if (dist.state === "at") { right = "At the price"; cls = "warn"; }
-    else { right = dist.limit ? "Passed · goes at market" : "Passed"; cls = "warn"; }
-    if (dist.done != null) bar = h("div", { className: "wbar " + cls }, h("i", { style: "width:" + Math.round(dist.done * 100) + "%" }));
+  const sl = pipsOf(it, it.sl), tp = pipsOf(it, it.tp);
+  const sub = (it.kind === "position" ? it.t.lots + " lots \u00b7 " : "") + "entry " + it.entry + (sl ? " \u00b7 SL " + sl : "") + (tp ? " \u00b7 TP " + tp : "") + (sl || tp ? " pips" : "");
+  let left = "No price yet", right = "", cls = "", btns = [];
+  const q = PX[it.symbol];
+  if (it.kind === "position") {
+    if (q) { // floating result in pips: a long closes at the bid, a short at the ask
+      const pips = (it.side === "buy" ? q.bid - it.entry : it.entry - q.ask) / q.pip_size;
+      left = "Price " + (it.side === "buy" ? q.bid : q.ask).toFixed(q.digits);
+      right = (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips"; cls = pips >= 0 ? "long" : "short";
+    }
+    if (it.t.sim) btns.push(h("button", { className: "btn small ghost", textContent: "Close", onclick: () => simAct("sim_close", it.t.id) }));
+  } else {
+    const dist = distance(it);
+    if (dist) {
+      left = "Price " + dist.price;
+      if (dist.state === "waiting") right = dist.away.toFixed(1) + " pips away";
+      else if (dist.state === "at") { right = "At the price"; cls = "warn"; }
+      else { right = dist.limit ? "Passed \u00b7 goes at market" : "Passed"; cls = "warn"; }
+    }
+    if (it.kind === "pending" && it.t.sim) btns.push(h("button", { className: "btn small", textContent: "Fill now", onclick: () => simAct("sim_fill", it.t.id) }), h("button", { className: "btn small ghost", textContent: "Cancel", onclick: () => simAct("sim_close", it.t.id) }));
   }
   const open = it.kind === "draft";
   return h("div", { className: "wrow" + (open ? " click" : ""), tabIndex: open ? 0 : -1, onclick: open ? () => openOrder(it.d) : null, onkeydown: open ? (e) => { if (e.key === "Enter") openOrder(it.d); } : null },
     h("div", { className: "wmain" },
       h("div", { className: "wtitle" }, h("b", { textContent: it.symbol }), h("span", { className: it.side === "buy" ? "long" : "short", textContent: it.side === "buy" ? "long" : "short" }),
-        h("span", { className: "wtype", textContent: it.type }), h("span", { className: "pill", textContent: it.kind })),
+        h("span", { className: "wtype", textContent: it.kind === "position" ? "" : it.type }), it.t && it.t.sim ? h("span", { className: "pill", textContent: "sim" }) : ""),
       h("div", { className: "wsub", textContent: sub })),
-    h("div", { className: "wdist" }, h("div", { className: "wtext" }, h("span", { textContent: left }), h("span", { className: cls, textContent: right })), bar || ""),
-    h("span", { className: "wmeta", textContent: it.meta }));
+    h("div", { className: "wtext" }, h("span", { textContent: left }), h("span", { className: cls, textContent: right })),
+    h("div", { className: "wmeta" }, h("span", { textContent: it.meta }), ...btns));
 }
 
 function renderWatch() {
   const rank = (it) => { const d = distance(it); return !d ? [3, 0] : d.state === "passed" ? [0, d.away] : d.state === "at" ? [1, 0] : [2, d.away]; };
-  const items = watchItems().sort((a, b) => { const x = rank(a), y = rank(b); return x[0] - y[0] || x[1] - y[1]; }); // passed first, then the closest
-  $("watch").replaceChildren(...(items.length ? items.map(watchRow) : [h("p", { className: "hint", textContent: "Nothing waiting. Tap + to plan an order." })]));
+  const all = watchItems(), of = (k) => all.filter((i) => i.kind === k).sort((a, b) => { const x = rank(a), y = rank(b); return x[0] - y[0] || x[1] - y[1]; }); // passed first, then the closest
+  const fill = (id, list, none) => $(id).replaceChildren(...(list.length ? list.map(watchRow) : [h("p", { className: "hint", textContent: none })]));
+  fill("pos", of("position"), "");
+  $("posPanel").hidden = !POSITIONS.length;
+  fill("pend", of("pending"), "No pending orders. Send a draft to an account to see it here.");
+  fill("drafts", of("draft"), "No drafts. Tap + to plan an order.");
   const priced = Object.values(PX).filter(Boolean);
-  $("watchNote").textContent = !items.length || !priced.length ? "" : priced.every((p) => p.simulated) ? "Simulated prices: no cTrader account is linked yet." : "Live prices, updated " + new Date().toLocaleTimeString();
+  $("watchNote").textContent = !priced.length ? "" : priced.every((p) => p.simulated) ? "Simulated prices: no cTrader account is linked yet." : "Live prices, updated " + new Date().toLocaleTimeString();
 }
 
 let priceBusy = false;

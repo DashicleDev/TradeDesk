@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 import { stripTypeScriptTypes } from "node:module";
 
 // ---- a tiny fake of the supabase client: just the query shapes index.ts uses
-const tables = { td_orders: [], td_accounts: [], td_templates: [], td_send_log: [], app_members: [], app_admins: [] };
+const tables = { td_orders: [], td_accounts: [], td_templates: [], td_send_log: [], td_sim: [], app_members: [], app_admins: [] };
 let nextId = 1;
 const fake = {
   auth: { getUser: async () => ({ data: { user: { id: "u1" } } }) },
@@ -165,3 +165,4 @@ assert.deepEqual(sy.symbols, [...sy.symbols].sort(), "sorted");
 
 console.log("function flow tests passed");
 fs.unlinkSync(tmp);
+assert.ok(tables.td_sim.length > 0 && tables.td_sim.every((r) => ["pending", "open"].includes(r.status)), "a mock send creates a simulated trade");

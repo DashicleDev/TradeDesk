@@ -308,3 +308,5 @@ button,.btn,label,summary,input,select,textarea,a,.scard,tr.click,.symitem,.swat
 .wbar.warn i{background:var(--orange)}
 .wmeta{font-size:12px;color:var(--muted);text-align:right;overflow-wrap:anywhere}
 @media (max-width:640px){.wrow{grid-template-columns:1fr;gap:8px}.wmeta{white-space:normal}}
+
+.wmeta{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.wmeta .btn{padding:3px 10px;font-size:12px}

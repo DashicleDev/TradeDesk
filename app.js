@@ -35,19 +35,7 @@ async function overview() {
     }));
     if (!accounts.length) $("rows").replaceChildren(emptyRow(6, "No accounts linked yet. Link one on the Accounts tab."));
     const trades = accounts.flatMap((a) => (a.trades || []).map((t) => ({ ...t, account: a.label })));
-    const tradeRows = (list, none) => list.length ? list.map((t) => {
-      const tr = document.createElement("tr");
-      [t.account, t.symbol, t.side === "buy" ? "Long" : "Short", t.lots, t.price, t.sl, t.tp].forEach((c, i) => {
-        const td = document.createElement("td");
-        td.textContent = c ?? "";
-        if (i === 2) td.className = t.side === "buy" ? "long" : "short";
-        else if (i >= 3) td.className = "r num";
-        tr.append(td);
-      });
-      return tr;
-    }) : [emptyRow(7, none)];
-    $("posRows").replaceChildren(...tradeRows(trades.filter((t) => t.kind === "position"), "No open positions."));
-    $("posPanel").hidden = !trades.some((t) => t.kind === "position"); // an empty table is just noise
+    POSITIONS = trades.filter((t) => t.kind === "position");
     ACCT_DATA = accounts; PENDING = trades.filter((t) => t.kind === "pending");
     renderStats(); renderWatch(); refreshPrices();
     msg("");
