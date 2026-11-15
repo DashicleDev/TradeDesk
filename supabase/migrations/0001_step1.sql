@@ -25,3 +25,6 @@ create table public.td_tokens (
 );
 alter table public.td_tokens enable row level security;  -- no policies: only service role
 revoke all on public.td_tokens from anon, authenticated;
+
+-- "Automatically expose new tables" is off: grant only what the page needs.
+grant select, update, delete on public.td_accounts to authenticated;
