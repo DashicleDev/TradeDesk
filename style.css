@@ -351,3 +351,25 @@ button,.btn,label,summary,input,select,textarea,a,.scard,tr.click,.symitem,.swat
 .stats .hl{font-size:12px;font-weight:600;color:var(--muted)}
 .stats .hv{font:600 34px var(--mono);letter-spacing:-.02em}
 .stats .hs{font-size:13px;color:var(--muted)}
+
+/* wide screens: positions and orders side by side instead of one long, sparse column */
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:20px;align-items:start;margin-top:20px}
+.dgrid>.panel[hidden]{display:none}
+@media (max-width:520px){.dgrid{grid-template-columns:minmax(0,1fr)}}
+/* symmetrical: positions | orders in two equal columns, drafts across the bottom; a lone panel takes the full width */
+.dgrid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
+.dgrid>#draftPanel,.dgrid>.panel.solo{grid-column:1/-1}
+@media (max-width:760px){.dgrid{grid-template-columns:minmax(0,1fr)}}
+
+/* back to the full-width stack, with four small boxes on top */
+.dgrid{grid-template-columns:minmax(0,1fr)}
+.dgrid>#draftPanel,.dgrid>.panel.solo{grid-column:auto}
+.stats{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;padding:0;margin-top:20px}
+.stats .stat .sv{font:600 24px var(--mono)}
+
+/* header total, then account tiles */
+.stats .hero{grid-column:1/-1;display:grid;gap:2px;padding:0 4px 4px}
+.stats .hero .hl{font-size:12px;font-weight:600;color:var(--muted)}
+.stats .hero .hv{font:600 34px var(--mono);letter-spacing:-.02em}
+.stats .hero .hs{font-size:13px;color:var(--muted)}
+.stats .stat .sl{display:flex;align-items:center;gap:8px}

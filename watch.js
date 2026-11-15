@@ -6,20 +6,34 @@ const WATCH_MAX = 6; // symbols priced per round: each one is a call to the func
 
 // The one number up top: what the running positions are worth now, summed (pairs whose pip value is unknown are left out).
 // Equity summed over accounts says little, and the accounts table has each one.
-function renderStats() {
-  let pnl = null;
-  for (const t of POSITIONS) {
+// Floating result of a list of running trades in dollars; pairs whose pip value is unknown are left out (null when none could be valued).
+function floating(trades) {
+  let sum = null;
+  for (const t of trades) {
     const q = PX[t.symbol], pv = q && pipValueUsd(t.symbol, q);
     if (!pv) continue;
-    const pips = (t.side === "buy" ? q.bid - t.price : t.price - q.ask) / q.pip_size;
-    pnl = (pnl ?? 0) + Number(t.lots) * pips * pv;
+    sum = (sum ?? 0) + Number(t.lots) * ((t.side === "buy" ? q.bid - t.price : t.price - q.ask) / q.pip_size) * pv;
   }
-  const open = POSITIONS.length, wait = PENDING.length + DRAFTS.length, n = ACCT_DATA.filter((a) => !a.error).length;
-  const bits = [open + " open", wait + " waiting", n + (n === 1 ? " account" : " accounts")];
-  $("stats").replaceChildren(
+  return sum;
+}
+const sign = (v) => (v == null ? "muted" : v >= 0 ? "long" : "short");
+
+// Top of the dashboard: the total, then one small tile per account (balance, open trades, what they are worth now).
+function renderStats() {
+  const total = floating(POSITIONS), open = POSITIONS.length, wait = PENDING.length + DRAFTS.length;
+  const hero = h("div", { className: "hero" },
     h("span", { className: "hl", textContent: "Floating P/L" }),
-    h("span", { className: "hv " + (pnl == null ? "muted" : pnl >= 0 ? "long" : "short"), textContent: pnl == null ? (open ? "–" : "No open trades") : money(pnl) }),
-    h("span", { className: "hs", textContent: bits.join(" · ") }));
+    h("span", { className: "hv " + sign(total), textContent: total == null ? (open ? "–" : "No open trades") : money(total) }),
+    h("span", { className: "hs", textContent: open + " open · " + wait + " waiting" }));
+  const tiles = ACCT_DATA.map((a) => {
+    if (a.error) return h("div", { className: "stat" }, h("span", { className: "sl", textContent: a.label }), h("span", { className: "ss", textContent: a.error }));
+    const pos = (a.trades || []).filter((t) => t.kind === "position"), pnl = floating(pos);
+    return h("div", { className: "stat" },
+      h("span", { className: "sl" }, a.label.replace(/^MOCK /, ""), h("span", { className: "pill " + (a.is_live ? "warn" : "ok"), textContent: a.is_live ? "live" : "demo" })),
+      h("span", { className: "sv " + sign(pnl), textContent: pnl == null ? (pos.length ? "–" : "flat") : money(pnl) }),
+      h("span", { className: "ss", textContent: Math.round(a.balance).toLocaleString("en-US") + " · " + pos.length + " open" + (a.orders ? " · " + a.orders + " pending" : "") }));
+  });
+  $("stats").replaceChildren(hero); // shortcut: per-account tiles (the `tiles` list) were tried and dropped; delete them if nobody wants them back
 }
 
 function watchItems() {
@@ -140,6 +154,8 @@ function renderWatch() {
   fill("pend", of("pending"), ""); fill("drafts", of("draft"), "");
   const none = !all.length;
   $("pendPanel").hidden = !of("pending").length; $("draftPanel").hidden = none ? false : !of("draft").length;
+  const both = !$("posPanel").hidden && !$("pendPanel").hidden; // two panels sit side by side, one alone takes the full width
+  $("posPanel").classList.toggle("solo", !both); $("pendPanel").classList.toggle("solo", !both);
   if (none) $("drafts").replaceChildren(h("p", { className: "hint", textContent: "Nothing yet. Tap + to plan an order." }));
   renderStats();
   const priced = Object.values(PX).filter(Boolean);
