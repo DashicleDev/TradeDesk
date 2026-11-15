@@ -16,8 +16,8 @@ const sheet = $("orderSheet");
 const openSheet = () => { sheet.hidden = false; $("orderForm").symbol.focus(); };
 const closeSheet = () => { sheet.hidden = true; };
 $("fab").onclick = openSheet;
-sheet.querySelectorAll("[data-close]").forEach((b) => (b.onclick = closeSheet));
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) closeSheet(); });
+document.querySelectorAll(".sheet [data-close]").forEach((b) => (b.onclick = () => (b.closest(".sheet").hidden = true)));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll(".sheet:not([hidden])").forEach((s) => (s.hidden = true)); });
 
 async function del(table, id, reload) {
   if (!confirm("Delete this?")) return;
@@ -44,7 +44,12 @@ $("orderForm").onsubmit = async (e) => {
 };
 
 const parseMap = (t) => Object.fromEntries(t.split("\n").map((l) => l.split("=").map((s) => s.trim())).filter(([a, b]) => a && b));
-const lotText = (t) => ({ fixed: `${t.lot_value} lots`, risk_pct: `${t.lot_value}% at risk`, multiplier: `${t.lot_value}× order lots` })[t.lot_mode];
+const lotText = (t) => ({ fixed: `${t.lot_value} lots`, risk_pct: `${t.lot_value}% of starting size at risk`, balance_pct: `${t.lot_value}% of balance at risk`, multiplier: `${t.lot_value}× order lots` })[t.lot_mode];
+const slTpText = (t) => [
+  t.fixed_sl_pips ? `SL ${t.fixed_sl_pips} pips` : t.copy_sl ? "SL copied" : "no SL",
+  t.fixed_tp_pips ? `TP ${t.fixed_tp_pips} pips` : t.copy_tp ? "TP copied" : "no TP",
+  t.sl_adjust_pips ? `SL ${t.sl_adjust_pips > 0 ? "+" : ""}${t.sl_adjust_pips}` : "", t.tp_adjust_pips ? `TP ${t.tp_adjust_pips > 0 ? "+" : ""}${t.tp_adjust_pips}` : ""].filter(Boolean).join(", ");
+const limitText = (t) => [t.max_open && `max ${t.max_open} open`, t.max_risk_pct && `max ${t.max_risk_pct}% risk`, t.min_lots && `min ${t.min_lots} lots`, t.max_lots && `max ${t.max_lots} lots`, t.expiry_hours && `expires ${t.expiry_hours}h`].filter(Boolean).join(", ") || "none";
 
 let templates = [];
 async function loadTemplates() {
@@ -53,20 +58,45 @@ async function loadTemplates() {
   templates = data;
   $("tplRows").replaceChildren(...(data.length ? data.map((t) => h("tr", {},
     cell(t.name), cell(lotText(t) + (t.reverse ? ", reversed" : "")),
-    cell([t.max_open && `max ${t.max_open} open`, t.max_risk_pct && `max ${t.max_risk_pct}% risk`].filter(Boolean).join(", ") || "none"),
-    cell([t.copy_sl ? "SL" : "no SL", t.copy_tp ? "TP" : "no TP"].join(" / ")),
-    delBtn("td_templates", t.id, loadTemplates))) : [emptyRow(5, "No templates yet. Save one above.")]));
+    cell(limitText(t)), cell(slTpText(t)),
+    h("td", { className: "r" },
+      h("button", { className: "btn small ghost", textContent: "Edit", onclick: () => openTpl(t) }), " ",
+      h("button", { className: "btn small ghost danger", textContent: "Delete", onclick: () => del("td_templates", t.id, loadTemplates) })))) : [emptyRow(5, "No templates yet. Use “New template”.")]));
   loadAccounts();
 }
 
-$("tplForm").onsubmit = async (e) => {
+// Template editor: collapsible sections in a bottom sheet. Use f.elements[...]: form.name is the form's own name, not the field.
+const tplSheet = $("tplSheet"), tplForm = $("tplForm");
+let editingTpl = null;
+const LOT_LBL = { fixed: "Lots", multiplier: "Multiplier (×)", risk_pct: "Risk (% of starting size)", balance_pct: "Risk (% of balance)" };
+const syncLotLbl = () => ($("lotValLbl").textContent = LOT_LBL[tplForm.elements.lot_mode.value]);
+tplForm.elements.lot_mode.onchange = syncLotLbl;
+function openTpl(t) {
+  editingTpl = t?.id ?? null;
+  tplForm.reset();
+  $("tTitle").textContent = t ? "Edit template" : "New template";
+  if (t) for (const el of tplForm.elements) {
+    if (!el.name) continue;
+    if (el.type === "checkbox") el.checked = !!t[el.name];
+    else if (el.name === "symbol_map") el.value = Object.entries(t.symbol_map || {}).map(([a, b]) => `${a}=${b}`).join("\n");
+    else el.value = t[el.name] ?? "";
+  }
+  syncLotLbl();
+  tplSheet.hidden = false;
+  tplForm.elements.name.focus();
+}
+$("newTpl").onclick = () => openTpl();
+
+tplForm.onsubmit = async (e) => {
   e.preventDefault();
-  const f = e.target;
-  const row = { name: f.name.value.trim(), lot_mode: f.lot_mode.value, lot_value: num(f.lot_value.value), max_open: num(f.max_open.value), max_risk_pct: num(f.max_risk_pct.value),
-    copy_sl: f.copy_sl.checked, copy_tp: f.copy_tp.checked, reverse: f.reverse.checked, symbol_map: parseMap(f.symbol_map.value) };
-  const { error } = await sb.from("td_templates").insert(row);
-  if (error) return msg(error.message, true);
-  msg(""); f.reset(); f.copy_sl.checked = f.copy_tp.checked = true; loadTemplates();
+  const el = tplForm.elements, v = (n) => el[n].value;
+  const row = { name: v("name").trim(), lot_mode: v("lot_mode"), lot_value: num(v("lot_value")), max_open: num(v("max_open")), max_risk_pct: num(v("max_risk_pct")),
+    copy_sl: el.copy_sl.checked, copy_tp: el.copy_tp.checked, reverse: el.reverse.checked, symbol_map: parseMap(v("symbol_map")),
+    fixed_sl_pips: num(v("fixed_sl_pips")), fixed_tp_pips: num(v("fixed_tp_pips")), sl_adjust_pips: num(v("sl_adjust_pips")) ?? 0, tp_adjust_pips: num(v("tp_adjust_pips")) ?? 0,
+    min_lots: num(v("min_lots")), max_lots: num(v("max_lots")), expiry_hours: num(v("expiry_hours")), comment: v("comment").trim() || null };
+  const { error } = editingTpl ? await sb.from("td_templates").update(row).eq("id", editingTpl) : await sb.from("td_templates").insert(row);
+  if (error) return msg(error.code === "23514" ? "A value is out of range (for example minimum lots above maximum lots)." : error.message, true);
+  msg(""); tplSheet.hidden = true; loadTemplates();
 };
 
 async function loadAccounts() {

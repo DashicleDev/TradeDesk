@@ -67,32 +67,71 @@
     </section>
 
     <section id="tTemplates" hidden>
-      <form class="panel" id="tplForm">
-        <h2>New template</h2>
-        <p class="hint">A recipe for turning an order into one account's order.</p>
-        <div class="fgrid">
-          <label class="f"><span>Name</span><input name="name" required></label>
-          <label class="f"><span>Lot size</span><select name="lot_mode"><option value="fixed">Fixed lots</option><option value="risk_pct">% of starting size at risk</option><option value="multiplier">Multiple of order lots</option></select></label>
-          <label class="f"><span>Value</span><input name="lot_value" type="number" step="any" min="0" required></label>
-          <label class="f"><span>Max open trades</span><input name="max_open" type="number" min="1"></label>
-          <label class="f"><span>Max risk % per account</span><input name="max_risk_pct" type="number" step="any" min="0"></label>
-          <div class="wide row">
-            <label class="f ck"><input name="copy_sl" type="checkbox" checked><span>Copy SL</span></label>
-            <label class="f ck"><input name="copy_tp" type="checkbox" checked><span>Copy TP</span></label>
-            <label class="f ck"><input name="reverse" type="checkbox"><span>Reverse direction</span></label>
-          </div>
-          <label class="f wide"><span>Symbol mapping (one per line: PAIR=BROKER)</span><textarea name="symbol_map" rows="2" placeholder="XAUUSD=GOLD"></textarea></label>
-        </div>
-        <button class="btn primary" type="submit">Save template</button>
-      </form>
-      <div class="panel" style="margin-top:20px">
+      <div class="panel">
         <h2>Templates</h2>
+        <p class="hint">A recipe for turning an order into one account's order: lot size, SL and TP handling, limits. Applied when you send (step 3).</p>
+        <div class="row" style="margin-bottom:16px"><button class="btn primary" id="newTpl">New template</button></div>
         <div class="tbl"><table><thead><tr><th>Name</th><th>Lots</th><th>Limits</th><th>SL / TP</th><th></th></tr></thead><tbody id="tplRows"></tbody></table></div>
       </div>
     </section>
   </main>
 
   <button type="button" class="fab" id="fab" aria-label="New order">+</button>
+  <div class="sheet" id="tplSheet" hidden>
+    <div class="scrim" data-close></div>
+    <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="tTitle">
+      <form id="tplForm" autocomplete="off">
+        <div class="formhead">
+          <h3 id="tTitle">New template</h3>
+          <button type="button" class="btn small ghost closex" data-close>Close</button>
+        </div>
+        <details class="acc" open><summary>General</summary><div class="accb">
+          <div class="fgrid"><label class="f wide"><span>Template name</span><input name="name" required></label></div>
+        </div></details>
+        <details class="acc" open><summary>Risk</summary><div class="accb">
+          <div class="fgrid">
+            <label class="f"><span>Lot size</span><select name="lot_mode">
+              <option value="fixed">Fixed lots</option>
+              <option value="multiplier">Multiple of the order's lots</option>
+              <option value="risk_pct">% of starting size at risk</option>
+              <option value="balance_pct">% of current balance at risk</option></select></label>
+            <label class="f"><span id="lotValLbl">Lots</span><input name="lot_value" type="number" step="any" min="0" required></label>
+          </div>
+        </div></details>
+        <details class="acc"><summary>SL and TP</summary><div class="accb">
+          <div class="row" style="margin-bottom:12px">
+            <label class="f ck"><input name="copy_sl" type="checkbox" checked><span>Copy stop loss</span></label>
+            <label class="f ck"><input name="copy_tp" type="checkbox" checked><span>Copy take profit</span></label>
+          </div>
+          <div class="fgrid">
+            <label class="f"><span>Fixed stop loss (pips)</span><input name="fixed_sl_pips" type="number" step="any" min="0" placeholder="off"></label>
+            <label class="f"><span>Fixed take profit (pips)</span><input name="fixed_tp_pips" type="number" step="any" min="0" placeholder="off"></label>
+            <label class="f"><span>Stop loss adjustment (pips)</span><input name="sl_adjust_pips" type="number" step="any" value="0"></label>
+            <label class="f"><span>Take profit adjustment (pips)</span><input name="tp_adjust_pips" type="number" step="any" value="0"></label>
+          </div>
+          <p class="hint" style="margin:0">A fixed value replaces the order's own SL or TP. An adjustment moves it away from entry (positive) or closer (negative).</p>
+        </div></details>
+        <details class="acc"><summary>Advanced</summary><div class="accb">
+          <div class="row" style="margin-bottom:12px"><label class="f ck"><input name="reverse" type="checkbox"><span>Reverse direction</span></label></div>
+          <div class="fgrid">
+            <label class="f"><span>Minimum lots</span><input name="min_lots" type="number" step="any" min="0" placeholder="off"></label>
+            <label class="f"><span>Maximum lots</span><input name="max_lots" type="number" step="any" min="0" placeholder="off"></label>
+            <label class="f"><span>Pending order expires after (hours)</span><input name="expiry_hours" type="number" step="any" min="0" placeholder="good till cancelled"></label>
+            <label class="f"><span>Order comment</span><input name="comment" maxlength="100"></label>
+            <label class="f wide"><span>Symbol mapping (one per line: PAIR=BROKER)</span><textarea name="symbol_map" rows="2" placeholder="XAUUSD=GOLD"></textarea></label>
+          </div>
+        </div></details>
+        <details class="acc"><summary>Limits</summary><div class="accb">
+          <div class="fgrid">
+            <label class="f"><span>Max open trades</span><input name="max_open" type="number" min="1" placeholder="off"></label>
+            <label class="f"><span>Max risk % per account</span><input name="max_risk_pct" type="number" step="any" min="0" placeholder="off"></label>
+          </div>
+          <p class="hint" style="margin:0">Hard limits: they can't be overridden when you send.</p>
+        </div></details>
+        <div class="formfoot"><button class="btn primary" type="submit">Save template</button></div>
+      </form>
+    </div>
+  </div>
   <div class="sheet" id="orderSheet" hidden>
     <div class="scrim" data-close></div>
     <div class="sheet-inner" role="dialog" aria-modal="true" aria-labelledby="oTitle">
