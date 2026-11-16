@@ -6,7 +6,8 @@ const manageSheet = $("manageSheet");
 let MG = null; // the group being managed
 let ML = {};   // per leg: { on, pips, price, dirty, differs }
 
-const mSigned = () => MG.kind === "position"; // positions: levels are checked against the market price, not the entry
+const mSigned = () => MG.kind === "position";
+const mSgn = (k) => (mSigned() && k === "sl" ? -1 : 1); // a position's stop is shown as its result: loss negative, profit positive // positions: levels are checked against the market price, not the entry
 const mPip = () => (PX[MG.symbol]?.pip_size) || guessPip(MG.symbol);
 const mDec = () => PX[MG.symbol]?.digits ?? (MG.symbol.includes("JPY") ? 3 : 5);
 const mDir = (k) => ((k === "sl") === (MG.side === "buy") ? -1 : 1); // which side of the entry the leg sits on
@@ -62,7 +63,7 @@ function openManage(it) {
     manageSheet.querySelector(`[data-sw="${k}"]`).checked = v != null;
     const shown = v ?? keptLeg(k); // a leg that was removed earlier comes back switched off, but with its old level ready
     mIn(k, "price").value = shown ?? "";
-    mIn(k, "pips").value = shown == null ? "" : (((shown - it.entry) / mPip()) * mDir(k)).toFixed(1);
+    mIn(k, "pips").value = shown == null ? "" : (((shown - it.entry) / mPip()) * mDir(k) * mSgn(k)).toFixed(1);
   }
   $("mFill").hidden = pos;
   $("mClose").textContent = pos ? "Close position" : "Cancel order";
@@ -78,7 +79,7 @@ function updateManage() {
   const q = PX[it.symbol], pv = q ? pipValueUsd(it.symbol, q) : null, lots = sel.reduce((s, t) => s + Number(t.lots), 0);
   if (q) { const d = it.side === "buy" ? q.ask : q.bid; $("mDist").textContent = "price now " + d.toFixed(q.digits); }
   for (const k of ["tp", "sl"]) {
-    const box = manageSheet.querySelector(`[data-box="${k}"]`), g = manageSheet.querySelector(`[data-gross="${k}"]`), spips = Number(mIn(k, "pips").value) || 0, pips = Math.abs(spips), locked = k === "sl" && mSigned() && spips < 0; // a stop past the entry locks profit in
+    const box = manageSheet.querySelector(`[data-box="${k}"]`), g = manageSheet.querySelector(`[data-gross="${k}"]`), spips = Number(mIn(k, "pips").value) || 0, pips = Math.abs(spips), locked = k === "sl" && mSigned() && spips > 0; // a stop past the entry locks profit in
     box.hidden = !ML[k].on;
     const note = ML[k].differs && !ML[k].dirty ? "The accounts hold different levels: turn it on to set one for all chosen." : "";
     if (ML[k].on && k === "sl" && mSigned() && spips === 0) { g.textContent = "Breakeven: nothing lost if it is hit."; g.className = "gross good"; continue; }
@@ -98,12 +99,12 @@ function updateManage() {
 manageSheet.addEventListener("change", (e) => {
   const k = e.target.dataset?.sw; if (!k) return;
   ML[k].on = e.target.checked; ML[k].dirty = true;
-  if (ML[k].on && mIn(k, "pips").value === "") { mIn(k, "pips").value = "10"; setFromPips(k); }
+  if (ML[k].on && mIn(k, "pips").value === "") { mIn(k, "pips").value = mSgn(k) < 0 ? "-10" : "10"; setFromPips(k); }
   updateManage();
 });
 // typing in pips or price keeps the other in step
-function setFromPips(k) { const v = Number(mIn(k, "pips").value); mIn(k, "price").value = Number.isFinite(v) ? (MG.entry + mDir(k) * (mSigned() ? v : Math.abs(v)) * mPip()).toFixed(mDec()) : ""; }
-function setFromPrice(k) { const v = Number(mIn(k, "price").value); mIn(k, "pips").value = mIn(k, "price").value === "" ? "" : (((v - MG.entry) / mPip()) * mDir(k)).toFixed(1); }
+function setFromPips(k) { const v = Number(mIn(k, "pips").value); mIn(k, "price").value = Number.isFinite(v) ? (MG.entry + mDir(k) * (mSigned() ? v * mSgn(k) : Math.abs(v)) * mPip()).toFixed(mDec()) : ""; }
+function setFromPrice(k) { const v = Number(mIn(k, "price").value); mIn(k, "pips").value = mIn(k, "price").value === "" ? "" : (((v - MG.entry) / mPip()) * mDir(k) * mSgn(k)).toFixed(1); }
 manageSheet.addEventListener("input", (e) => {
   const m = /^(tp|sl)-(pips|price)$/.exec(e.target.dataset?.in || ""); if (!m) return;
   ML[m[1]].dirty = true; (m[2] === "pips" ? setFromPips : setFromPrice)(m[1]); updateManage();
