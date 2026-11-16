@@ -130,7 +130,7 @@ function mockAccount(a: any) {
 async function simAccount(uid: string, a: any) {
   const m = mockAccount(a);
   const { data } = await admin.from("td_sim").select("*").eq("user_id", uid).eq("account_id", a.id).neq("status", "closed").order("created_at");
-  const trades = (data ?? []).map((t: any) => ({ id: t.id, sim: true, kind: t.status === "open" ? "position" : "pending", symbol: t.symbol, side: t.side, lots: Number(t.lots), price: Number(t.entry), sl: t.sl == null ? null : Number(t.sl), tp: t.tp == null ? null : Number(t.tp) }));
+  const trades = (data ?? []).map((t: any) => ({ id: t.id, sim: true, kind: t.status === "open" ? "position" : "pending", symbol: t.symbol, side: t.side, lots: Number(t.lots), price: Number(t.entry), sl: t.sl == null ? null : Number(t.sl), tp: t.tp == null ? null : Number(t.tp), note: t.note ?? null }));
   return { ...m, trades, positions: trades.filter((t) => t.kind === "position").length, orders: trades.filter((t) => t.kind === "pending").length };
 }
 
@@ -291,7 +291,7 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
             else { status = "rejected"; message = m; }
           }
         }
-        if (a.is_mock) await admin.from("td_sim").insert({ user_id: uid, account_id: a.id, symbol: order.symbol, side: order.side, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, status: p.orderType === "market" ? "open" : "pending" });
+        if (a.is_mock) await admin.from("td_sim").insert({ user_id: uid, account_id: a.id, symbol: order.symbol, side: order.side, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, note: order.note ?? null, status: p.orderType === "market" ? "open" : "pending" });
         await admin.from("td_send_log").update({ status, message, broker_response: response }).eq("id", row.id);
         return rows.push({ ...shown, ok: status === "sent" || status === "simulated", reason: status === "sent" || status === "simulated" ? undefined : message, message, status });
       };

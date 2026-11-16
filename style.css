@@ -448,3 +448,9 @@ main>section>.panel>.hint{margin:12px 0 14px}
 .legbox .nudge input{width:56px;text-align:center;border:0;background:transparent;font:600 16px var(--body);padding:4px 0}
 .line .stepper{width:auto;gap:4px;align-items:center}.line .stepper input{width:110px;flex:none}
 .gross{padding:2px 0 10px}
+
+/* all switches on the right, like the account rows */
+.legline .lt{flex:1;margin-right:0}
+.legline .legbox{margin-left:0}
+
+.bnote{margin-top:6px;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

@@ -14,8 +14,8 @@ const mSelected = () => MG.ts.filter((_, i) => manageSheet.querySelector(`[data-
 const mFmt = (v) => (v == null || v === "" || Number.isNaN(v) ? "" : String(v));
 
 const legHtml = (k, word, label) => `
-  <div class="line legline"><label class="sw"><input type="checkbox" data-sw="${k}" aria-label="${word}"></label><span class="lt" title="${word}">${label}</span>
-    <div data-box="${k}" class="legbox" hidden><input class="pxin" type="number" step="any" inputmode="decimal" data-in="${k}-price" placeholder="price" aria-label="Price"><div class="nudge" data-leg="${k}" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">\u2212</button><input type="number" step="any" inputmode="decimal" data-in="${k}-pips" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div></div></div>
+  <div class="line legline"><span class="lt" title="${word}">${label}</span>
+    <div data-box="${k}" class="legbox" hidden><input class="pxin" type="number" step="any" inputmode="decimal" data-in="${k}-price" placeholder="price" aria-label="Price"><div class="nudge" data-leg="${k}" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">\u2212</button><input type="number" step="any" inputmode="decimal" data-in="${k}-pips" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div></div><label class="sw"><input type="checkbox" data-sw="${k}" aria-label="${word}"></label></div>
   <p class="gross" data-gross="${k}"></p>`;
 $("mLegs").innerHTML = legHtml("tp", "Take profit", "TP") + legHtml("sl", "Stop loss", "SL");
 const mIn = (k, f) => manageSheet.querySelector(`[data-in="${k}-${f}"]`);

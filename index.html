@@ -170,13 +170,14 @@
           <div class="line"><span class="lt">Entry<small class="fh" id="dist"></small></span>
             <div class="stepper"><input name="entry" type="number" step="any" required><button type="button" class="btn small" id="entryDown" aria-label="Down one pip">−</button><button type="button" class="btn small" id="entryUp" aria-label="Up one pip">+</button></div></div>
 
-          <div class="line legline"><label class="sw"><input type="checkbox" name="tp_on" aria-label="Take profit"></label><span class="lt" title="Take profit">TP</span>
-            <div id="tpBox" class="legbox" hidden><input class="pxin" name="tp" type="number" step="any" placeholder="price" aria-label="Price"><div class="nudge" data-leg="tp" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input name="tp_pips" type="number" step="any" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div></div></div>
+          <div class="line legline"><span class="lt" title="Take profit">TP</span>
+            <div id="tpBox" class="legbox" hidden><input class="pxin" name="tp" type="number" step="any" placeholder="price" aria-label="Price"><div class="nudge" data-leg="tp" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input name="tp_pips" type="number" step="any" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div></div><label class="sw"><input type="checkbox" name="tp_on" aria-label="Take profit"></label></div>
           <p class="gross" id="tpGross"></p>
 
-          <div class="line legline"><label class="sw"><input type="checkbox" name="sl_on" aria-label="Stop loss"></label><span class="lt" title="Stop loss">SL</span>
-            <div id="slBox" class="legbox" hidden><input class="pxin" name="sl" type="number" step="any" placeholder="price" aria-label="Price"><div class="nudge" data-leg="sl" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input name="sl_pips" type="number" step="any" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div></div></div>
+          <div class="line legline"><span class="lt" title="Stop loss">SL</span>
+            <div id="slBox" class="legbox" hidden><input class="pxin" name="sl" type="number" step="any" placeholder="price" aria-label="Price"><div class="nudge" data-leg="sl" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input name="sl_pips" type="number" step="any" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div></div><label class="sw"><input type="checkbox" name="sl_on" aria-label="Stop loss"></label></div>
           <p class="gross" id="slGross"></p>
+          <label class="line"><span class="lt">Note</span><input name="note" class="wideinput" placeholder="Why this trade" aria-label="Note"></label>
         </div>
 
         <details class="more">
@@ -185,7 +186,6 @@
             <label class="line"><span class="lt">Pip size<small class="fh" id="pipHint"></small></span><input name="pip" type="number" step="any" min="0" value="0.0001"></label>
             <div class="line"><span class="lt">Expiry</span><label class="sw"><input type="checkbox" name="exp_on" aria-label="Expiry"></label></div>
             <div id="expBox" hidden><label class="subline"><span class="lt">Cancel the order at</span><input name="expires" type="datetime-local"></label></div>
-            <label class="line"><span class="lt">Note</span><input name="note" class="wideinput" placeholder="Optional"></label>
           </div>
         </details>
         <span id="lotHint" hidden></span>

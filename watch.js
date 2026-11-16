@@ -102,7 +102,8 @@ function watchRow(it) {
     if (d) head.append(h("span", { className: "bgap " + (d.state === "waiting" ? "" : "warn"), textContent: d.state === "waiting" ? d.away.toFixed(1) + " pips away" : d.state === "at" ? "At the price" : "Passed" }));
   } else if (q) body = track(it, q);
   else body = h("div", { className: "bwait", textContent: "Waiting for a price" });
-  return h("div", { className: "bx click", tabIndex: 0, onclick: () => go(it), onkeydown: (e) => { if (e.key === "Enter") go(it); } }, head, body);
+  const note = it.kind === "draft" ? it.d.note : (it.ts.find((t) => t.note) || {}).note;
+  return h("div", { className: "bx click", tabIndex: 0, onclick: () => go(it), onkeydown: (e) => { if (e.key === "Enter") go(it); } }, head, note ? h("div", { className: "bnote", textContent: note }) : "", body);
 }
 
 function renderWatch() {
