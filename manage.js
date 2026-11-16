@@ -29,6 +29,16 @@ function pnlOf(t) {
   return h("span", { className: "mpnl " + (amt >= 0 ? "long" : "short"), textContent: money(amt) });
 }
 
+// Removing a stop loss or take profit remembers the level (in this browser), so switching it on again later brings it back.
+const keepKey = (t, k) => "td-keep:" + t.id + ":" + k;
+function keepLeg(k) {
+  try { for (const t of mSelected()) if (t[k] != null) localStorage.setItem(keepKey(t, k), String(t[k])); } catch { /* storage blocked: nothing remembered */ }
+}
+function keptLeg(k) {
+  try { for (const t of MG.ts) { const v = localStorage.getItem(keepKey(t, k)); if (v != null) return Number(v); } } catch { /* storage blocked */ }
+  return null;
+}
+
 function openManage(it) {
   MG = it;
   const sim = it.ts.every((t) => t.sim), pos = it.kind === "position", total = it.ts.reduce((s, t) => s + Number(t.lots), 0);
@@ -51,8 +61,9 @@ function openManage(it) {
     const vals = new Set(it.ts.map((t) => t[k] ?? null)), v = vals.size === 1 ? [...vals][0] : null;
     ML[k] = { on: v != null, dirty: false, differs: vals.size > 1 };
     manageSheet.querySelector(`[data-sw="${k}"]`).checked = v != null;
-    mIn(k, "price").value = v == null ? "" : v;
-    mIn(k, "pips").value = v == null ? "" : (((v - it.entry) / mPip()) * mDir(k)).toFixed(1);
+    const shown = v ?? keptLeg(k); // a leg that was removed earlier comes back switched off, but with its old level ready
+    mIn(k, "price").value = shown ?? "";
+    mIn(k, "pips").value = shown == null ? "" : (((shown - it.entry) / mPip()) * mDir(k)).toFixed(1);
   }
   $("mFill").hidden = pos;
   $("mClose").textContent = pos ? "Close position" : "Cancel order";
@@ -118,7 +129,7 @@ $("mFill").onclick = () => manageDo(async () => { for (const t of mSelected()) a
 $("mSave").onclick = () => {
   const patch = {};
   for (const k of ["sl", "tp"]) if (ML[k].dirty) {
-    if (!ML[k].on) { patch[k] = null; continue; }
+    if (!ML[k].on) { patch[k] = null; keepLeg(k); continue; }
     const pips = Number(mIn(k, "pips").value), price = Number(mIn(k, "price").value);
     if (!(pips > 0) || !(price > 0)) return ($("mMsg").textContent = (k === "sl" ? "Stop loss" : "Take profit") + " is on the wrong side of the entry.");
     patch[k] = price;
