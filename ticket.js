@@ -22,7 +22,7 @@ const orderTypeNow = () => { const e = num(oe.entry.value), m = market(); return
 function updateEntry() {
   const e = num(oe.entry.value), m = market(), p = pip();
   oe.entry.setCustomValidity("");
-  const d = $("dist"); d.className = "fh";
+  const d = $("dist"); d.className = "fh"; oe.entry.classList.remove("flag");
   if (e == null || m == null || !p || !side()) { d.textContent = ""; return; }
   const dist = (e - m) / p;
   if (dist === 0) { // sitting exactly on the market is neither a limit nor a stop: blocks saving, quietly until you touch it
@@ -30,6 +30,8 @@ function updateEntry() {
     d.textContent = text; oe.entry.setCustomValidity(text); if (TK.entryTouched) d.className = "fh warn";
     return;
   }
+  const flag = side() === "sell" ? dist > 0 : dist < 0; // a sell above the market or a buy below it: marked red
+  if (flag) { d.className = "fh warn"; oe.entry.classList.add("flag"); }
   d.textContent = (side() === "buy" ? "Buy " : "Sell ") + orderTypeFor(e, m) + " \u00b7 " + Math.abs(dist).toFixed(1) + " pips " + (dist > 0 ? "above" : "below") + " the market";
 }
 function step(dir) {
