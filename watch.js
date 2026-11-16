@@ -111,7 +111,7 @@ const money = (v) => (v < 0 ? "−" : "+") + "$" + Math.abs(v).toLocaleString("e
 
 // Under a running position: how far the price is between the stop loss and the take profit, and each account's running result.
 // Left is always the loss side and right the profit side, for longs and shorts alike.
-const foot = (n, extra) => h("div", { className: "wfoot", textContent: [n + (n === 1 ? " account" : " accounts"), extra].filter(Boolean).join(" · ") });
+const foot = (n, extra, more) => h("div", { className: "wfoot", textContent: [n + (n === 1 ? " account" : " accounts"), extra, more].filter(Boolean).join(" · ") });
 const zoneBg = (at, sl, tp) => "background:linear-gradient(to right," + (sl ? "color-mix(in srgb,var(--bad) 55%,transparent)" : "var(--soft)") + " " + at + "%," + (tp ? "color-mix(in srgb,var(--good) 55%,transparent)" : "var(--soft)") + " " + at + "%)";
 const noLegs = (sl, tp) => (sl != null && tp != null ? "" : h("div", { className: "plabels" }, h("span", { textContent: sl == null ? "No stop loss" : "" }), h("span", { textContent: tp == null ? "No take profit" : "" })));
 
@@ -128,13 +128,14 @@ function pendingDetail(it, q) {
 }
 
 function positionDetail(it, q, pips) {
-  const slP = it.sl != null ? Math.abs(it.entry - it.sl) / q.pip_size : null, tpP = it.tp != null ? Math.abs(it.tp - it.entry) / q.pip_size : null;
+  // signed: positive = stop on the losing side of the entry; zero or negative = breakeven or profit locked in
+  const slS = it.sl != null ? ((it.side === "buy" ? it.entry - it.sl : it.sl - it.entry) / q.pip_size) : null, locked = slS != null && slS <= 0, slP = slS != null && !locked ? slS : null, tpP = it.tp != null ? Math.abs(it.tp - it.entry) / q.pip_size : null;
   const pad = Math.max(10, Math.abs(pips) * 1.3); // no SL or TP set: show a neutral stretch instead
-  const L = slP ?? pad, R = tpP ?? pad, at = (L / (L + R)) * 100;
+  const L = locked ? 0.0001 : slP ?? pad, R = Math.max(tpP ?? pad, locked ? -slS * 1.3 : 0), at = (L / (L + R)) * 100;
   const mark = ((L + Math.max(-L, Math.min(R, pips))) / (L + R)) * 100;
   const bar = h("div", { className: "pbar" },
     h("div", { className: "ptrack", style: zoneBg(at, slP != null, tpP != null) },
-      h("i", { className: "pentry", style: "left:" + at + "%" }), h("i", { className: "pmark " + (pips >= 0 ? "up" : "down"), style: "left:" + mark + "%" })), noLegs(slP, tpP));
+      h("i", { className: "pentry", style: "left:" + at + "%" }), locked ? h("i", { className: "pstop", style: "left:" + ((L - slS) / (L + R)) * 100 + "%" }) : "", h("i", { className: "pmark " + (pips >= 0 ? "up" : "down"), style: "left:" + mark + "%" })), noLegs(it.sl != null ? 1 : null, tpP));
   const pv = pipValueUsd(it.symbol, q);
   let total = null;
   const rows = it.ts.map((t) => {
@@ -143,7 +144,7 @@ function positionDetail(it, q, pips) {
     return h("div", { className: "pacct" }, h("span", { textContent: t.account.replace(/^MOCK /, "") }), h("span", { className: "muted", textContent: t.lots + " lots" }),
       h("span", { className: "pamt " + (pips >= 0 ? "long" : "short"), textContent: amt != null ? money(amt) : (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips" }));
   });
-  return { total, el: h("div", { className: "wdetail" }, bar, foot(it.ts.length, (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips")) };
+  return { total, el: h("div", { className: "wdetail" }, bar, foot(it.ts.length, (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips", locked ? (slS === 0 ? "stop at entry" : "stop locks +" + (-slS).toFixed(1)) : "")) };
 }
 
 function renderWatch() {
@@ -176,3 +177,8 @@ async function refreshPrices() {
 }
 // every 8 s while the dashboard is in front: not in a background tab, and not while a form is open (the ticket polls its own pair)
 setInterval(() => { if (document.hidden || $("main").hidden || $("tDash").hidden || document.querySelector(".sheet:not([hidden])")) return; refreshPrices(); }, 8000);
+
+// Coming back to the app (phones freeze timers while it is in the background): refresh at once instead of waiting for the next tick.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && !$("main").hidden && !document.querySelector(".sheet:not([hidden])")) overview();
+});

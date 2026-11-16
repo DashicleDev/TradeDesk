@@ -385,3 +385,7 @@ button,.btn,label,summary,input,select,textarea,a,.scard,tr.click,.symitem,.swat
 .wdetail{gap:0}
 .mrow{display:flex;justify-content:space-between;align-items:center}.mpnl{font:600 14px var(--mono)}
 .flag{border-color:var(--bad)!important;color:var(--bad)}
+.pstop{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--good);border-radius:1px}
+
+/* phones: bigger touch targets for the - / + steppers */
+@media (pointer:coarse){.nudge .btn,.stepper .btn{min-width:40px;min-height:40px}.legrow .nudge input{width:68px}}

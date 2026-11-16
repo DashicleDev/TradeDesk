@@ -6,6 +6,7 @@ const manageSheet = $("manageSheet");
 let MG = null; // the group being managed
 let ML = {};   // per leg: { on, pips, price, dirty, differs }
 
+const mSigned = () => MG.kind === "position"; // positions: levels are checked against the market price, not the entry
 const mPip = () => (PX[MG.symbol]?.pip_size) || guessPip(MG.symbol);
 const mDec = () => PX[MG.symbol]?.digits ?? (MG.symbol.includes("JPY") ? 3 : 5);
 const mDir = (k) => ((k === "sl") === (MG.side === "buy") ? -1 : 1); // which side of the entry the leg sits on
@@ -79,13 +80,14 @@ function updateManage() {
   const q = PX[it.symbol], pv = q ? pipValueUsd(it.symbol, q) : null, lots = sel.reduce((s, t) => s + Number(t.lots), 0);
   if (q) { const d = it.side === "buy" ? q.ask : q.bid; $("mDist").textContent = "price now " + d.toFixed(q.digits); }
   for (const k of ["tp", "sl"]) {
-    const box = manageSheet.querySelector(`[data-box="${k}"]`), g = manageSheet.querySelector(`[data-gross="${k}"]`), pips = Math.abs(Number(mIn(k, "pips").value) || 0);
+    const box = manageSheet.querySelector(`[data-box="${k}"]`), g = manageSheet.querySelector(`[data-gross="${k}"]`), spips = Number(mIn(k, "pips").value) || 0, pips = Math.abs(spips), locked = k === "sl" && mSigned() && spips < 0; // a stop past the entry locks profit in
     box.hidden = !ML[k].on;
     const note = ML[k].differs && !ML[k].dirty ? "The accounts hold different levels: turn it on to set one for all chosen." : "";
+    if (ML[k].on && k === "sl" && mSigned() && spips === 0) { g.textContent = "Breakeven: nothing lost if it is hit."; g.className = "gross good"; continue; }
     if (!ML[k].on || !pips || !lots || !pv) { g.textContent = ML[k].on ? "" : note; g.className = "gross"; continue; }
     const amt = lots * pips * pv;
-    g.className = "gross " + (k === "tp" ? "good" : "bad");
-    g.textContent = (k === "tp" ? "Gross profit" : "Gross loss") + ": ~ " + (k === "sl" ? "−" : "") + "$" + amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    g.className = "gross " + (k === "tp" || locked ? "good" : "bad");
+    g.textContent = (k === "tp" ? "Gross profit" : locked ? "Locked-in profit" : "Gross loss") + ": ~ " + (k === "sl" && !locked ? "−" : "") + "$" + amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       + " · ~" + (amt / PREFS.ref_balance * 100).toFixed(2) + "% of " + PREFS.ref_balance.toLocaleString();
   }
   manageSheet.querySelectorAll('[data-sw]').forEach((el) => { const k = el.dataset.sw, d = ML[k].differs && !ML[k].dirty; if (d) el.parentElement.title = "Accounts differ"; });
@@ -102,7 +104,7 @@ manageSheet.addEventListener("change", (e) => {
   updateManage();
 });
 // typing in pips or price keeps the other in step
-function setFromPips(k) { const v = Number(mIn(k, "pips").value); mIn(k, "price").value = Number.isFinite(v) ? (MG.entry + mDir(k) * Math.abs(v) * mPip()).toFixed(mDec()) : ""; }
+function setFromPips(k) { const v = Number(mIn(k, "pips").value); mIn(k, "price").value = Number.isFinite(v) ? (MG.entry + mDir(k) * (mSigned() ? v : Math.abs(v)) * mPip()).toFixed(mDec()) : ""; }
 function setFromPrice(k) { const v = Number(mIn(k, "price").value); mIn(k, "pips").value = mIn(k, "price").value === "" ? "" : (((v - MG.entry) / mPip()) * mDir(k)).toFixed(1); }
 manageSheet.addEventListener("input", (e) => {
   const m = /^(tp|sl)-(pips|price)$/.exec(e.target.dataset?.in || ""); if (!m) return;
@@ -112,7 +114,7 @@ manageSheet.addEventListener("input", (e) => {
 manageSheet.addEventListener("click", (e) => {
   const b = e.target.closest(".nudge button"); if (!b) return;
   const wrap = b.closest(".nudge"), k = wrap.dataset.leg, d = Number(b.dataset.d), p = mPip();
-  if (wrap.dataset.field === "pips") { mIn(k, "pips").value = String(Math.max(0, +((Math.abs(Number(mIn(k, "pips").value) || 0)) + d).toFixed(1))); setFromPips(k); }
+  if (wrap.dataset.field === "pips") { { const cur = Number(mIn(k, "pips").value) || 0; mIn(k, "pips").value = String(mSigned() ? +(cur + d).toFixed(1) : Math.max(0, +(Math.abs(cur) + d).toFixed(1))); } setFromPips(k); }
   else { const cur = Number(mIn(k, "price").value) || MG.entry; mIn(k, "price").value = (cur + d * p).toFixed(mDec()); setFromPrice(k); }
   ML[k].dirty = true; updateManage();
 });
@@ -130,8 +132,14 @@ $("mSave").onclick = () => {
   const patch = {};
   for (const k of ["sl", "tp"]) if (ML[k].dirty) {
     if (!ML[k].on) { patch[k] = null; keepLeg(k); continue; }
-    const pips = Number(mIn(k, "pips").value), price = Number(mIn(k, "price").value);
-    if (!(pips > 0) || !(price > 0)) return ($("mMsg").textContent = (k === "sl" ? "Stop loss" : "Take profit") + " is on the wrong side of the entry.");
+    const pips = Number(mIn(k, "pips").value), price = Number(mIn(k, "price").value), word = k === "sl" ? "Stop loss" : "Take profit";
+    if (!(price > 0)) return ($("mMsg").textContent = word + " needs a price.");
+    if (!mSigned() && !(pips > 0)) return ($("mMsg").textContent = word + " is on the wrong side of the entry.");
+    const q = PX[MG.symbol]; // a running position: a long's stop must sit under the price it would close at (bid), a short's above its ask; targets the other way
+    if (mSigned() && q) {
+      const long = MG.side === "buy", ref = long ? q.bid : q.ask, below = (k === "sl") === long;
+      if (below ? price >= ref : price <= ref) return ($("mMsg").textContent = word + " must be " + (below ? "below" : "above") + " the current price (" + ref.toFixed(q.digits) + ").");
+    }
     patch[k] = price;
   }
   if (!Object.keys(patch).length) return ($("mMsg").textContent = "Nothing changed.");
