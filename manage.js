@@ -21,18 +21,25 @@ const legHtml = (k, word) => `
 $("mLegs").innerHTML = legHtml("tp", "Take profit") + legHtml("sl", "Stop loss");
 const mIn = (k, f) => manageSheet.querySelector(`[data-in="${k}-${f}"]`);
 
+// A running position's result on one account right now, in dollars (pairs whose pip value is unknown show nothing).
+function pnlOf(t) {
+  const q = PX[MG.symbol], pv = q && pipValueUsd(MG.symbol, q);
+  if (MG.kind !== "position" || !pv) return "";
+  const amt = Number(t.lots) * ((MG.side === "buy" ? q.bid - MG.entry : MG.entry - q.ask) / q.pip_size) * pv;
+  return h("span", { className: "mpnl " + (amt >= 0 ? "long" : "short"), textContent: money(amt) });
+}
+
 function openManage(it) {
   MG = it;
   const sim = it.ts.every((t) => t.sim), pos = it.kind === "position", total = it.ts.reduce((s, t) => s + Number(t.lots), 0);
   $("mTitle").textContent = pos ? "Running position" : "Pending order";
   $("mSym").textContent = it.symbol;
   $("mSide").textContent = it.side === "buy" ? "Long (buy)" : "Short (sell)"; $("mSide").className = it.side === "buy" ? "long" : "short";
-  $("mLots").textContent = it.ts.map((t) => t.lots).join(" + ") + (it.ts.length > 1 ? " = " + +total.toFixed(2) : "");
   $("mEntry").textContent = it.entry;
   $("mAccts").replaceChildren(...it.ts.map((t, i) => {
     const sw = h("input", { type: "checkbox", checked: true });
     sw.setAttribute("aria-label", "Apply to " + t.account);
-    const card = h("div", { className: "scard on", tabIndex: 0 }, h("div", { className: "shead" }, h("span", { className: "sname", textContent: t.account }), h("label", { className: "sw" }, sw)), h("div", { className: "sctl" }, h("span", { className: "slots", textContent: t.lots + " lots" })));
+    const card = h("div", { className: "scard on", tabIndex: 0 }, h("div", { className: "shead" }, h("span", { className: "sname", textContent: t.account }), h("label", { className: "sw" }, sw)), h("div", { className: "sctl mrow" }, h("span", { className: "slots", textContent: t.lots + " lots" }), pnlOf(t)));
     card.dataset.mi = i;
     const set = (on) => { card.classList.toggle("on", on); sw.checked = on; updateManage(); };
     sw.onchange = () => set(sw.checked);
