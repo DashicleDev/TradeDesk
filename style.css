@@ -389,3 +389,62 @@ button,.btn,label,summary,input,select,textarea,a,.scard,tr.click,.symitem,.swat
 
 /* phones: bigger touch targets for the - / + steppers */
 @media (pointer:coarse){.nudge .btn,.stepper .btn{min-width:40px;min-height:40px}.legrow .nudge input{width:68px}}
+
+/* dashboard board: open sections, one hairline under each header, the number rides the marker */
+.board{margin-top:8px}
+.bsec{margin-top:44px}.bsec[hidden]{display:none}
+.bhead{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.bhead h2{margin:0;font-size:15px;font-weight:600;color:var(--muted)}
+.btotal{font:700 32px/1 var(--display);font-stretch:75%;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.bx{padding:26px 0 10px;cursor:pointer;border-radius:8px}
+.bx:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.bhd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.bsym{font:700 26px/1 var(--display);font-stretch:75%;letter-spacing:-.01em}
+.bside{font-size:15px;font-weight:600}
+.bacc{margin-left:auto;font-size:13px;color:var(--muted)}
+.bgap{font:700 17px/1 var(--display);font-variant-numeric:tabular-nums;min-width:96px;text-align:right}
+.bgap.warn,.bbub.warn{color:var(--orange)}
+.btrack{position:relative;padding-top:38px}
+.bbub{position:absolute;top:10px;left:clamp(56px,var(--m,50%),calc(100% - 56px));transform:translateX(-50%);font:700 18px/1 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bbar{position:relative;height:10px;border-radius:5px}
+.bentry{position:absolute;top:-5px;bottom:-5px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px}
+.bstop{position:absolute;top:-5px;bottom:-5px;width:2px;margin-left:-1px;background:var(--good);border-radius:1px}
+.bmark{position:absolute;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:3px solid var(--paper);background:var(--ink)}
+.bmark.up{background:var(--good)}.bmark.down{background:var(--bad)}
+.bwait{margin-top:14px;font-size:13px;color:var(--muted)}
+.btrack .plabels{margin-top:6px}
+@media (hover:hover){.bx:hover .bsym{color:var(--accent)}}
+.board{margin-top:-24px;padding-bottom:96px} /* the + button sits over the last row otherwise */
+.btrack .plabels{font:500 12px var(--body)}
+/* rows inside a section: a faint line so each trade reads as its own unit */
+.bx+.bx{border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent);border-radius:0;margin-top:6px}
+
+/* the other tabs follow the dashboard board: open sections, a muted title with one hairline under it, hairlines between rows */
+main>section>.panel{background:none;border:0;border-radius:0;padding:0}
+main>section>.panel+.panel{margin-top:44px}
+main>section>.panel>h2{font:600 15px var(--body);color:var(--muted);margin:0 0 4px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+main>section>.panel>.hint{margin:12px 0 14px}
+#tAccounts .tbl,#tTemplates .tbl,#tLog .tbl{margin-top:4px}
+#tAccounts th,#tTemplates th,#tLog th{font-weight:500}
+#tAccounts td,#tTemplates td,#tLog td{padding-block:14px}
+#rows td:first-child,#accRows td:first-child,#tplRows td:first-child{font:700 18px/1.2 var(--display);font-stretch:75%;letter-spacing:-.01em}
+#tAccounts .num,#tTemplates .num,#tLog .num{font-family:var(--body);font-variant-numeric:tabular-nums}
+#tTemplates .row,#tAccounts .row{margin-top:14px}
+
+/* sheets: same title voice as the board, and the grouped rows lose their box */
+.formhead h3,.settitle{font-stretch:75%;font-weight:700;font-size:24px;letter-spacing:-.01em}
+.lines{background:none;border:0;border-radius:0;padding:0;border-top:1px solid var(--line)}
+.lines>:last-child{border-bottom:1px solid var(--line)}
+.gross,.slots,#mAccts .slots{font-family:var(--body);font-variant-numeric:tabular-nums}
+
+/* price first: one row per leg, the price is the big figure, pips with - / + sit beside it */
+.legline{gap:12px}
+.legline .lt{margin-right:auto;color:var(--muted)}
+.legbox{display:flex;align-items:center;gap:8px;margin-left:auto}
+.legbox[hidden]{display:none}
+.legbox .pxin,.line .stepper input{font:600 20px var(--body);font-variant-numeric:tabular-nums;text-align:right;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;padding:4px 2px}
+.legbox .pxin{width:96px}
+.legbox .nudge{gap:2px}
+.legbox .nudge input{width:56px;text-align:center;border:0;background:transparent;font:600 16px var(--body);padding:4px 0}
+.line .stepper{width:auto;gap:4px;align-items:center}.line .stepper input{width:110px;flex:none}
+.gross{padding:2px 0 10px}

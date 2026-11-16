@@ -18,22 +18,11 @@ function floating(trades) {
 }
 const sign = (v) => (v == null ? "muted" : v >= 0 ? "long" : "short");
 
-// Top of the dashboard: the total, then one small tile per account (balance, open trades, what they are worth now).
+// The total of the running positions, in the header of their section.
 function renderStats() {
-  const total = floating(POSITIONS), open = POSITIONS.length, wait = PENDING.length + DRAFTS.length;
-  const hero = h("div", { className: "hero" },
-    h("span", { className: "hl", textContent: "Floating P/L" }),
-    h("span", { className: "hv " + sign(total), textContent: total == null ? (open ? "–" : "No open trades") : money(total) }),
-    h("span", { className: "hs", textContent: open + " open · " + wait + " waiting" }));
-  const tiles = ACCT_DATA.map((a) => {
-    if (a.error) return h("div", { className: "stat" }, h("span", { className: "sl", textContent: a.label }), h("span", { className: "ss", textContent: a.error }));
-    const pos = (a.trades || []).filter((t) => t.kind === "position"), pnl = floating(pos);
-    return h("div", { className: "stat" },
-      h("span", { className: "sl" }, a.label.replace(/^MOCK /, ""), h("span", { className: "pill " + (a.is_live ? "warn" : "ok"), textContent: a.is_live ? "live" : "demo" })),
-      h("span", { className: "sv " + sign(pnl), textContent: pnl == null ? (pos.length ? "–" : "flat") : money(pnl) }),
-      h("span", { className: "ss", textContent: Math.round(a.balance).toLocaleString("en-US") + " · " + pos.length + " open" + (a.orders ? " · " + a.orders + " pending" : "") }));
-  });
-  $("stats").replaceChildren(hero); // shortcut: per-account tiles (the `tiles` list) were tried and dropped; delete them if nobody wants them back
+  const total = floating(POSITIONS), el = $("posTotal");
+  el.className = "btotal " + sign(total);
+  el.textContent = total == null ? "" : money(total);
 }
 
 function watchItems() {
@@ -65,99 +54,64 @@ function distance(it) {
   return { away, state, limit, price: price.toFixed(q.digits) };
 }
 
-const pipsOf = (it, v) => {
-  if (v == null) return "";
-  const q = PX[it.symbol];
-  return q ? String(Math.round((Math.abs(it.entry - v) / q.pip_size) * 10) / 10) : pipsBetween(it.symbol, it.entry, v);
-};
-
-
-const go = (it) => (it.kind === "draft" ? openOrder(it.d) : openManage(it));
-function watchRow(it) {
-  const sl = pipsOf(it, it.sl), tp = pipsOf(it, it.tp);
-  const sub = "entry " + it.entry + (sl ? " \u00b7 SL " + sl : "") + (tp ? " \u00b7 TP " + tp : "") + (sl || tp ? " pips" : "");
-  let left = "No price yet", right = "", cls = "", detail = null;
-  const q = PX[it.symbol];
-  if (it.kind === "position") {
-    if (q) { // floating result in pips: a long closes at the bid, a short at the ask
-      const pips = (it.side === "buy" ? q.bid - it.entry : it.entry - q.ask) / q.pip_size;
-      left = "Price " + (it.side === "buy" ? q.bid : q.ask).toFixed(q.digits);
-      right = (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips"; cls = pips >= 0 ? "long" : "short";
-      detail = positionDetail(it, q, pips);
-      if (detail.total != null) right = money(detail.total);
-      detail = detail.el;
-    }
-  } else {
-    const dist = distance(it);
-    if (dist) {
-      left = "Price " + dist.price;
-      if (dist.state === "waiting") right = dist.away.toFixed(1) + " pips away";
-      else if (dist.state === "at") { right = "At the price"; cls = "warn"; }
-      else { right = dist.limit ? "Passed \u00b7 goes at market" : "Passed"; cls = "warn"; }
-    }
-  }
-  if (it.kind === "pending" && q) detail = pendingDetail(it, q);
-  const names = it.ts ? it.ts.map((t) => h("span", { className: "chip", textContent: t.account.replace(/^MOCK /, "") + " · " + t.lots })) : [h("span", { className: "chip", textContent: it.meta })];
-  return h("div", { className: "wrow click", tabIndex: 0, onclick: () => go(it), onkeydown: (e) => { if (e.key === "Enter") go(it); } },
-    h("div", { className: "wl" },
-      h("div", { className: "wtitle" }, h("b", { textContent: it.symbol }), h("span", { className: it.side === "buy" ? "long" : "short", textContent: it.kind === "position" ? (it.side === "buy" ? "long" : "short") : (it.side === "buy" ? "Buy " : "Sell ") + it.type }), it.ts && it.ts[0].sim ? h("span", { className: "pill", textContent: "sim" }) : ""),
-      it.kind === "draft" ? h("div", { className: "wfoot", textContent: "entry " + it.entry + " · " + it.meta }) : "",
-      ""),
-    h("div", { className: "wr" }, h("div", { className: "wbig " + cls, textContent: right || "–" })),
-    detail || "");
-}
-
 const money = (v) => (v < 0 ? "−" : "+") + "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const go = (it) => (it.kind === "draft" ? openOrder(it.d) : openManage(it));
+const plural = (n) => n + (n === 1 ? " account" : " accounts");
 
-// Under a running position: how far the price is between the stop loss and the take profit, and each account's running result.
-// Left is always the loss side and right the profit side, for longs and shorts alike.
-const foot = (n, extra, more) => h("div", { className: "wfoot", textContent: [n + (n === 1 ? " account" : " accounts"), extra, more].filter(Boolean).join(" · ") });
 const zoneBg = (at, sl, tp) => "background:linear-gradient(to right," + (sl ? "color-mix(in srgb,var(--bad) 55%,transparent)" : "var(--soft)") + " " + at + "%," + (tp ? "color-mix(in srgb,var(--good) 55%,transparent)" : "var(--soft)") + " " + at + "%)";
 const noLegs = (sl, tp) => (sl != null && tp != null ? "" : h("div", { className: "plabels" }, h("span", { textContent: sl == null ? "No stop loss" : "" }), h("span", { textContent: tp == null ? "No take profit" : "" })));
 
-// Under an active order: the planned trade (SL .. entry .. TP) with a dot for where the price is now, so the gap to the entry is visible.
-function pendingDetail(it, q) {
-  const buy = it.side === "buy", price = buy ? q.ask : q.bid;
-  const from = (buy ? price - it.entry : it.entry - price) / q.pip_size; // where the price sits against the entry, as profit pips of a trade opened there
-  const slP = it.sl != null ? Math.abs(it.entry - it.sl) / q.pip_size : null, tpP = it.tp != null ? Math.abs(it.tp - it.entry) / q.pip_size : null;
-  const L = Math.max(slP ?? 10, -from * 1.15, 10), R = Math.max(tpP ?? 10, from * 1.15, 10), at = (L / (L + R)) * 100, mark = ((L + from) / (L + R)) * 100;
-  const bar = h("div", { className: "pbar" },
-    h("div", { className: "ptrack", style: zoneBg(at, slP != null, tpP != null) },
-      h("i", { className: "pentry", style: "left:" + at + "%" }), h("i", { className: "pmark now", style: "left:" + mark + "%" })), noLegs(slP, tpP));
-  return h("div", { className: "wdetail" }, bar, foot(it.ts.length));
+// One trade as a track: stop loss zone on the left, the entry line, take profit zone on the right. The dot is where the price is now and
+// its label rides above it: dollars for a running position, the gap for a pending order. Left is always the loss side, longs and shorts alike.
+function track(it, q) {
+  const buy = it.side === "buy", pend = it.kind === "pending";
+  const price = pend ? (buy ? q.ask : q.bid) : (buy ? q.bid : q.ask); // a long closes at the bid, a short at the ask
+  const from = ((price - it.entry) * (buy ? 1 : -1)) / q.pip_size; // profit pips a trade opened at the entry would show at this price
+  const slS = it.sl != null ? (buy ? it.entry - it.sl : it.sl - it.entry) / q.pip_size : null; // zero or negative: breakeven, or profit locked in
+  const locked = slS != null && slS <= 0, slP = slS != null && !locked ? slS : null;
+  const tpP = it.tp != null ? Math.abs(it.tp - it.entry) / q.pip_size : null, pad = Math.max(10, Math.abs(from) * 1.3); // no SL or TP: a neutral stretch
+  const L = pend ? Math.max(slP ?? 10, -from * 1.15, 10) : locked ? 0.0001 : slP ?? pad;
+  const R = pend ? Math.max(tpP ?? 10, from * 1.15, 10) : Math.max(tpP ?? pad, locked ? -slS * 1.3 : 0);
+  const at = (L / (L + R)) * 100, mark = ((L + (pend ? from : Math.max(-L, Math.min(R, from)))) / (L + R)) * 100;
+  let label, cls = "";
+  if (pend) {
+    const d = distance(it);
+    if (d.state === "waiting") label = d.away.toFixed(1) + " pips away";
+    else { label = d.state === "at" ? "At the price" : d.limit ? "Passed: goes at market" : "Passed"; cls = "warn"; }
+  } else {
+    const usd = floating(it.ts);
+    label = usd != null ? money(usd) : (from >= 0 ? "+" : "") + from.toFixed(1) + " pips"; cls = from >= 0 ? "long" : "short";
+  }
+  return h("div", { className: "btrack" },
+    h("div", { className: "bbub " + cls, style: "--m:" + mark + "%", textContent: label }),
+    h("div", { className: "bbar", style: zoneBg(at, slP != null, tpP != null) },
+      h("i", { className: "bentry", style: "left:" + at + "%" }),
+      locked ? h("i", { className: "bstop", style: "left:" + ((L - slS) / (L + R)) * 100 + "%" }) : "",
+      h("i", { className: "bmark " + (pend ? "" : from >= 0 ? "up" : "down"), style: "left:" + mark + "%" })),
+    noLegs(it.sl != null ? 1 : null, tpP));
 }
 
-function positionDetail(it, q, pips) {
-  // signed: positive = stop on the losing side of the entry; zero or negative = breakeven or profit locked in
-  const slS = it.sl != null ? ((it.side === "buy" ? it.entry - it.sl : it.sl - it.entry) / q.pip_size) : null, locked = slS != null && slS <= 0, slP = slS != null && !locked ? slS : null, tpP = it.tp != null ? Math.abs(it.tp - it.entry) / q.pip_size : null;
-  const pad = Math.max(10, Math.abs(pips) * 1.3); // no SL or TP set: show a neutral stretch instead
-  const L = locked ? 0.0001 : slP ?? pad, R = Math.max(tpP ?? pad, locked ? -slS * 1.3 : 0), at = (L / (L + R)) * 100;
-  const mark = ((L + Math.max(-L, Math.min(R, pips))) / (L + R)) * 100;
-  const bar = h("div", { className: "pbar" },
-    h("div", { className: "ptrack", style: zoneBg(at, slP != null, tpP != null) },
-      h("i", { className: "pentry", style: "left:" + at + "%" }), locked ? h("i", { className: "pstop", style: "left:" + ((L - slS) / (L + R)) * 100 + "%" }) : "", h("i", { className: "pmark " + (pips >= 0 ? "up" : "down"), style: "left:" + mark + "%" })), noLegs(it.sl != null ? 1 : null, tpP));
-  const pv = pipValueUsd(it.symbol, q);
-  let total = null;
-  const rows = it.ts.map((t) => {
-    const amt = pv ? Number(t.lots) * pips * pv : null;
-    if (amt != null) total = (total ?? 0) + amt;
-    return h("div", { className: "pacct" }, h("span", { textContent: t.account.replace(/^MOCK /, "") }), h("span", { className: "muted", textContent: t.lots + " lots" }),
-      h("span", { className: "pamt " + (pips >= 0 ? "long" : "short"), textContent: amt != null ? money(amt) : (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips" }));
-  });
-  return { total, el: h("div", { className: "wdetail" }, bar, foot(it.ts.length, (pips >= 0 ? "+" : "") + pips.toFixed(1) + " pips", locked ? (slS === 0 ? "stop at entry" : "stop locks +" + (-slS).toFixed(1)) : "")) };
+function watchRow(it) {
+  const buy = it.side === "buy", q = PX[it.symbol], word = it.kind === "position" ? (buy ? "long" : "short") : (buy ? "Buy " : "Sell ") + it.type;
+  const head = h("div", { className: "bhd" },
+    h("b", { className: "bsym", textContent: it.symbol }), h("span", { className: "bside " + (buy ? "long" : "short"), textContent: word }),
+    h("span", { className: "bacc", textContent: it.ts ? plural(it.ts.length) : it.meta }));
+  let body = "";
+  if (it.kind === "draft") { // a draft has no trade yet: just how far the entry is from the price
+    const d = distance(it);
+    if (d) head.append(h("span", { className: "bgap " + (d.state === "waiting" ? "" : "warn"), textContent: d.state === "waiting" ? d.away.toFixed(1) + " pips away" : d.state === "at" ? "At the price" : "Passed" }));
+  } else if (q) body = track(it, q);
+  else body = h("div", { className: "bwait", textContent: "Waiting for a price" });
+  return h("div", { className: "bx click", tabIndex: 0, onclick: () => go(it), onkeydown: (e) => { if (e.key === "Enter") go(it); } }, head, body);
 }
 
 function renderWatch() {
   const rank = (it) => { const d = distance(it); return !d ? [3, 0] : d.state === "passed" ? [0, d.away] : d.state === "at" ? [1, 0] : [2, d.away]; };
   const all = watchItems(), of = (k) => all.filter((i) => i.kind === k).sort((a, b) => { const x = rank(a), y = rank(b); return x[0] - y[0] || x[1] - y[1]; }); // passed first, then the closest
-  const fill = (id, list, none) => $(id).replaceChildren(...(list.length ? list.map(watchRow) : [h("p", { className: "hint", textContent: none })]));
-  fill("pos", of("position"), "");
-  $("posPanel").hidden = !POSITIONS.length;
-  fill("pend", of("pending"), ""); fill("drafts", of("draft"), "");
+  const fill = (id, list) => $(id).replaceChildren(...list.map(watchRow));
+  fill("pos", of("position")); fill("pend", of("pending")); fill("drafts", of("draft"));
   const none = !all.length;
-  $("pendPanel").hidden = !of("pending").length; $("draftPanel").hidden = none ? false : !of("draft").length;
-  const both = !$("posPanel").hidden && !$("pendPanel").hidden; // two panels sit side by side, one alone takes the full width
-  $("posPanel").classList.toggle("solo", !both); $("pendPanel").classList.toggle("solo", !both);
+  $("posPanel").hidden = !POSITIONS.length; $("pendPanel").hidden = !of("pending").length; $("draftPanel").hidden = none ? false : !of("draft").length;
   if (none) $("drafts").replaceChildren(h("p", { className: "hint", textContent: "Nothing yet. Tap + to plan an order." }));
   renderStats();
   const priced = Object.values(PX).filter(Boolean);

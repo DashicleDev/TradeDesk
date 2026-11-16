@@ -33,7 +33,7 @@ async function overview() {
       });
       return tr;
     }));
-    if (!accounts.length) $("rows").replaceChildren(emptyRow(6, "No accounts linked yet. Link one on the Accounts tab."));
+    if (!accounts.length) $("rows").replaceChildren(emptyRow(6, "No accounts yet. Link one below."));
     const trades = accounts.flatMap((a) => (a.trades || []).map((t) => ({ ...t, account: a.label })));
     POSITIONS = trades.filter((t) => t.kind === "position");
     ACCT_DATA = accounts; PENDING = trades.filter((t) => t.kind === "pending");

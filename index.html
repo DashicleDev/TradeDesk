@@ -42,53 +42,49 @@
   <main>
     <p class="msg" id="msg"></p>
 
-    <section id="tDash">
-      <div class="stats" id="stats"></div>
-      <div class="dgrid">
-      <div class="panel" id="posPanel" hidden>
-        <h2>Running positions</h2>
+    <section id="tDash" class="board">
+      <div class="bsec" id="posPanel" hidden>
+        <header class="bhead"><h2>Running positions</h2><span class="btotal" id="posTotal"></span></header>
         <div id="pos"></div>
       </div>
-      <div class="panel" id="pendPanel" hidden>
-        <h2>Active orders</h2>
+      <div class="bsec" id="pendPanel" hidden>
+        <header class="bhead"><h2>Active orders</h2></header>
         <div id="pend"></div>
       </div>
-      <div class="panel" id="draftPanel" hidden>
-        <h2>Drafts</h2>
+      <div class="bsec" id="draftPanel" hidden>
+        <header class="bhead"><h2>Drafts</h2></header>
         <div id="drafts"></div>
       </div>
-      </div>
-      <p class="msg" id="watchNote" style="margin-top:12px"></p>
+      <p class="msg" id="watchNote" style="margin-top:28px"></p>
     </section>
 
     <section id="tAccounts" hidden>
       <div class="panel" style="margin-bottom:20px">
-        <h2>Accounts</h2>
-        <p class="hint">Balance, equity and open trades for every linked cTrader account.</p>
+        <h2>Balances</h2>
         <div class="tbl"><table><thead><tr><th>Account</th><th>Type</th><th class="r">Balance</th><th class="r">Equity</th><th class="r">Open trades</th><th class="r">Pending</th></tr></thead><tbody id="rows"></tbody></table></div>
       </div>
       <div class="panel">
-        <h2>Linked accounts</h2>
-        <p class="hint">Link your cTrader ID once. You log in on cTrader's own page; Desk never sees your broker password.</p>
-        <div class="row" style="margin-bottom:8px"><button class="btn primary" id="link">Link cTrader account(s)</button><button class="btn" id="linkTrade">Link with trading permission</button></div>
-        <p class="hint">The first link is view-only. Sending orders needs the trading permission: link again with the second button. Orders still only go to demo accounts for now.</p>
+        <h2>Link accounts</h2>
+        <p class="hint">Link your cTrader ID once. You log in on cTrader's own page, so Desk never sees your broker password.</p>
+        <div class="row" style="margin-bottom:8px"><button class="btn primary" id="link">Link cTrader account</button><button class="btn" id="linkTrade">Link with trading permission</button></div>
+        <p class="hint">The first link is view-only. To send orders, link again with the trading permission. Orders go to demo accounts only for now.</p>
+      </div>
+      <div class="panel">
+        <h2>Account settings</h2>
         <div class="tbl"><table><thead><tr><th>Account</th><th>Default template</th><th class="r">Starting size</th></tr></thead><tbody id="accRows"></tbody></table></div>
-        <p class="hint" style="margin:12px 0 0">The default template is used when you send an order; you can override it per order. Starting size is what "% at risk" is measured against.</p>
+        <p class="hint" style="margin:12px 0 0">The default template is used when you send; you can change it per order. Starting size is what "% at risk" is measured against.</p>
       </div>
     </section>
 
     <section id="tLog" hidden>
       <div class="panel">
-        <h2>Send log</h2>
-        <p class="hint">What was sent where, and what the broker answered. Newest first.</p>
         <div class="tbl"><table><thead><tr><th>When</th><th>Account</th><th>Order</th><th>Status</th><th>Answer</th></tr></thead><tbody id="logRows"></tbody></table></div>
       </div>
     </section>
 
     <section id="tTemplates" hidden>
       <div class="panel">
-        <h2>Templates</h2>
-        <p class="hint">A recipe for turning an order into one account's order: lot size, SL and TP handling, limits. Applied when you send (step 3).</p>
+        <p class="hint">How an order becomes one account's order: lot size, SL and TP, limits.</p>
         <div class="row" style="margin-bottom:16px"><button class="btn primary" id="newTpl">New template</button></div>
         <div class="tbl"><table><thead><tr><th>Name</th><th>Lots</th><th>Limits</th><th>SL / TP</th><th></th></tr></thead><tbody id="tplRows"></tbody></table></div>
       </div>
@@ -171,20 +167,16 @@
 
         <div class="lines">
           <div class="line"><span class="lt">Quantity (lots)<button type="button" class="autobtn" id="lotAuto"></button></span><input name="lots" type="number" step="any" min="0" placeholder="0.00" required></div>
-          <div class="line"><span class="lt">Entry price<small class="fh" id="dist"></small></span>
+          <div class="line"><span class="lt">Entry<small class="fh" id="dist"></small></span>
             <div class="stepper"><input name="entry" type="number" step="any" required><button type="button" class="btn small" id="entryDown" aria-label="Down one pip">−</button><button type="button" class="btn small" id="entryUp" aria-label="Up one pip">+</button></div></div>
 
-          <div class="line"><span class="lt">Take profit</span><label class="sw"><input type="checkbox" name="tp_on" aria-label="Take profit"></label></div>
-          <div id="tpBox" hidden>
-            <div class="subline legrow"><div class="nudge" data-leg="tp" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input name="tp_pips" type="number" step="any" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div><input class="pxin" name="tp" type="number" step="any" placeholder="price" aria-label="Price"></div>
-            <p class="gross" id="tpGross"></p>
-          </div>
+          <div class="line legline"><label class="sw"><input type="checkbox" name="tp_on" aria-label="Take profit"></label><span class="lt" title="Take profit">TP</span>
+            <div id="tpBox" class="legbox" hidden><input class="pxin" name="tp" type="number" step="any" placeholder="price" aria-label="Price"><div class="nudge" data-leg="tp" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input name="tp_pips" type="number" step="any" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div></div></div>
+          <p class="gross" id="tpGross"></p>
 
-          <div class="line"><span class="lt">Stop loss</span><label class="sw"><input type="checkbox" name="sl_on" aria-label="Stop loss"></label></div>
-          <div id="slBox" hidden>
-            <div class="subline legrow"><div class="nudge" data-leg="sl" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input name="sl_pips" type="number" step="any" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div><input class="pxin" name="sl" type="number" step="any" placeholder="price" aria-label="Price"></div>
-            <p class="gross" id="slGross"></p>
-          </div>
+          <div class="line legline"><label class="sw"><input type="checkbox" name="sl_on" aria-label="Stop loss"></label><span class="lt" title="Stop loss">SL</span>
+            <div id="slBox" class="legbox" hidden><input class="pxin" name="sl" type="number" step="any" placeholder="price" aria-label="Price"><div class="nudge" data-leg="sl" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input name="sl_pips" type="number" step="any" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div></div></div>
+          <p class="gross" id="slGross"></p>
         </div>
 
         <details class="more">

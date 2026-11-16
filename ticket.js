@@ -367,7 +367,7 @@ function autoLots() {
   if (!pv) { b.textContent = conversionPairFor(sym) ? "Auto · waiting for the USD conversion price" : "Auto can't value this pair: type the lots"; return; }
   const lots = Math.floor((PREFS.ref_balance * PREFS.risk_pct / 100 / (slPips * pv)) / q.step_lots + 1e-9) * q.step_lots;
   oe.lots.value = String(Number(lots.toFixed(8)));
-  b.textContent = "Auto \u00b7 " + base + " at a " + slPips + "-pip stop (tap to type)";
+  b.textContent = "Auto \u00b7 " + base + " at a " + slPips + "-pip stop";
 }
 $("lotAuto").onclick = () => { TK.autoLots = !TK.autoLots; updateAll(); };
 $("prefRisk").oninput = $("prefBal").oninput = () => {

@@ -13,13 +13,11 @@ const mDir = (k) => ((k === "sl") === (MG.side === "buy") ? -1 : 1); // which si
 const mSelected = () => MG.ts.filter((_, i) => manageSheet.querySelector(`[data-mi="${i}"]`).classList.contains("on"));
 const mFmt = (v) => (v == null || v === "" || Number.isNaN(v) ? "" : String(v));
 
-const legHtml = (k, word) => `
-  <div class="line"><span class="lt">${word}</span><label class="sw"><input type="checkbox" data-sw="${k}" aria-label="${word}"></label></div>
-  <div data-box="${k}" hidden>
-    <div class="subline legrow"><div class="nudge" data-leg="${k}" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">−</button><input type="number" step="any" data-in="${k}-pips" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div><input class="pxin" type="number" step="any" data-in="${k}-price" placeholder="price" aria-label="Price"></div>
-    <p class="gross" data-gross="${k}"></p>
-  </div>`;
-$("mLegs").innerHTML = legHtml("tp", "Take profit") + legHtml("sl", "Stop loss");
+const legHtml = (k, word, label) => `
+  <div class="line legline"><label class="sw"><input type="checkbox" data-sw="${k}" aria-label="${word}"></label><span class="lt" title="${word}">${label}</span>
+    <div data-box="${k}" class="legbox" hidden><input class="pxin" type="number" step="any" inputmode="decimal" data-in="${k}-price" placeholder="price" aria-label="Price"><div class="nudge" data-leg="${k}" data-field="pips"><button type="button" class="btn small" data-d="-1" aria-label="One pip less">\u2212</button><input type="number" step="any" inputmode="decimal" data-in="${k}-pips" placeholder="pips" aria-label="Pips"><button type="button" class="btn small" data-d="1" aria-label="One pip more">+</button></div></div></div>
+  <p class="gross" data-gross="${k}"></p>`;
+$("mLegs").innerHTML = legHtml("tp", "Take profit", "TP") + legHtml("sl", "Stop loss", "SL");
 const mIn = (k, f) => manageSheet.querySelector(`[data-in="${k}-${f}"]`);
 
 // A running position's result on one account right now, in dollars (pairs whose pip value is unknown show nothing).
