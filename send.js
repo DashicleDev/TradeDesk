@@ -15,7 +15,7 @@ function reviewCard(r) {
   const card = h("div", { className: "rcard " + (r.ok ? "" : "bad") }, head);
   if (r.template) card.append(h("p", { className: "rtpl", textContent: "Template: " + r.template }));
   if (r.lots != null) {
-    const g = h("div", { className: "rgrid" }, stat("Lots", String(r.lots), "big"), stat("Order", (RV.side === "buy" ? "Buy " : "Sell ") + (r.orderType || "")), stat("Entry", String(r.entry)), stat("Stop loss", r.sl != null ? String(r.sl) : "none", "", r.slPips != null ? r.slPips + " pips" : ""), stat("Take profit", r.tp != null ? String(r.tp) : "none", "", r.tpPips != null ? r.tpPips + " pips" : ""));
+    const g = h("div", { className: "rgrid" }, stat("Lots", String(r.lots), "big"), stat("Order", (RV.side === "buy" ? "Buy " : "Sell ") + (r.orderType || "")), stat("Entry", String(r.entry)), stat("Stop loss", r.sl != null ? String(r.sl) : "none", "", r.slPips != null ? "−" + r.slPips + " pips" : ""), stat("Take profit", r.tp != null ? String(r.tp) : "none", "", r.tpPips != null ? r.tpPips + " pips" : ""));
     if (r.riskMoney != null) g.append(stat("Risk", usd(r.riskMoney) + (r.riskPct != null ? ` (${r.riskPct.toFixed(2)}%)` : "")));
     if (r.expiresAt) g.append(stat("Cancels at", when(r.expiresAt)));
     card.append(g);

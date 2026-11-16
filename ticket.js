@@ -55,12 +55,12 @@ function syncLeg(k) {
   const dir = k === "sl" ? (long ? -1 : 1) : (long ? 1 : -1); // which side of the entry this leg belongs on
   if (TK.src[k] === "pips") {
     const v = num(oe[k + "_pips"].value);
-    oe[k].value = v == null ? "" : (entry + dir * Math.abs(v) * p).toFixed(dec());
+    oe[k].value = v == null ? "" : (entry + dir * (k === "sl" ? -v : Math.abs(v)) * p).toFixed(dec());
   } else {
     const price = num(oe[k].value);
     if (price == null) return void (oe[k + "_pips"].value = "");
     const v = ((price - entry) / p) * dir; // negative = wrong side of the entry
-    oe[k + "_pips"].value = v.toFixed(1);
+    oe[k + "_pips"].value = (k === "sl" ? -v : v).toFixed(1);
     if (v <= 0) oe[k].setCustomValidity(k === "sl" ? "The stop loss is on the wrong side of the entry." : "The take profit is on the wrong side of the entry.");
   }
 }
@@ -77,7 +77,7 @@ for (const k of ["sl", "tp"]) {
   oe[k + "_on"].onchange = () => { // turning it off remembers the distance; turning it on again brings it back, else 10 pips so the buttons have something to move
     TK.src[k] = "pips";
     if (!oe[k + "_on"].checked) TK.keep[k] = oe[k + "_pips"].value;
-    else if (oe[k + "_pips"].value === "") oe[k + "_pips"].value = TK.keep[k] || "10";
+    else if (oe[k + "_pips"].value === "") oe[k + "_pips"].value = TK.keep[k] || (k === "sl" ? "-10" : "10");
     updateAll();
   };
   oe[k + "_pips"].oninput = () => { TK.src[k] = "pips"; updateAll(); };
@@ -198,8 +198,8 @@ $("orderForm").addEventListener("click", (e) => {
   const wrap = b.closest(".nudge"), k = wrap.dataset.leg, d = Number(b.dataset.d), p = pip();
   if (!p) return;
   if (wrap.dataset.field === "pips") {
-    const cur = Math.abs(num(oe[k + "_pips"].value) ?? 0);
-    oe[k + "_pips"].value = String(Math.max(0, +(cur + d).toFixed(1)));
+    const cur = num(oe[k + "_pips"].value) ?? 0; // SL is negative, so + moves it toward the entry, and never past it
+    oe[k + "_pips"].value = String(k === "sl" ? Math.min(0, +(cur + d).toFixed(1)) : Math.max(0, +(Math.abs(cur) + d).toFixed(1)));
     TK.src[k] = "pips";
   } else {
     const cur = num(oe[k].value) ?? num(oe.entry.value);
