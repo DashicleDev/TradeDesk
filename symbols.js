@@ -1,7 +1,7 @@
 // Symbol picker: a list like cTrader's, with a search box, a check on the current symbol and your recent picks on top.
-// The list is the broker's when an account is linked, the simulated set before that. Uses oe, call, h, $ (earlier files).
+// The list is the broker's, so it needs a linked cTrader account. Uses oe, call, h, $ (earlier files).
 const symSheet = $("symSheet");
-let SYM = { list: null, at: 0, simulated: false };
+let SYM = { list: null, at: 0 };
 const RECENT_KEY = "td_recent_symbols";
 const recent = () => { try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; } };
 const remember = (s) => { try { localStorage.setItem(RECENT_KEY, JSON.stringify([s, ...recent().filter((x) => x !== s)].slice(0, 5))); } catch { /* storage blocked: no recents, nothing else lost */ } };
@@ -9,7 +9,7 @@ const remember = (s) => { try { localStorage.setItem(RECENT_KEY, JSON.stringify(
 async function loadSymbols() {
   if (SYM.list && Date.now() - SYM.at < 5 * 60e3) return;
   const r = await call("symbols");
-  SYM = { list: r.symbols, at: Date.now(), simulated: r.simulated };
+  SYM = { list: r.symbols, at: Date.now() };
 }
 
 const matches = () => {
@@ -29,7 +29,7 @@ function renderSymbols() {
   if (!shown.length) kids.push(h("p", { className: "hint", textContent: q ? "No symbol matches " + q + "." : "No symbols." }));
   if (found.length > shown.length) kids.push(h("p", { className: "hint", textContent: found.length - shown.length + " more: type to narrow the list." }));
   $("symList").replaceChildren(...kids);
-  $("symNote").textContent = SYM.simulated ? "Simulated list: no cTrader account is linked yet." : "";
+  $("symNote").textContent = "";
 }
 
 function pickSymbol(s) {

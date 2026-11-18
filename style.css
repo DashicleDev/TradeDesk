@@ -119,7 +119,7 @@ main{grid-template-columns:minmax(0,1fr)}
 .tk .sidebtns{margin:0 0 8px}
 #liveLine{margin:0 0 4px;font:500 12px var(--mono);color:var(--muted)}
 #liveLine::before{content:"●";margin-right:6px}
-#liveLine.live-ok{color:var(--good)}#liveLine.sim{color:var(--orange)}#liveLine.warn{color:var(--bad)}
+#liveLine.live-ok{color:var(--good)}#liveLine.warn{color:var(--bad)}
 .lines{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:12px 0;padding:0 14px}
 .line,.subline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;min-height:52px;border-bottom:1px solid var(--line);cursor:default}
 .lines>:last-child{border-bottom:0}

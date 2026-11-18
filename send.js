@@ -5,12 +5,11 @@ let RV = null; // { orderId, rows, phase: "review" | "sent" }
 
 const usd = (n) => "$" + Math.round(n).toLocaleString();
 const when = (ms) => new Date(ms).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
-const STATUS_PILL = { ready: "ok", sent: "ok", simulated: "ok", rejected: "no", blocked: "no", changed: "warn", unknown: "warn", pending: "" };
+const STATUS_PILL = { ready: "ok", sent: "ok", rejected: "no", blocked: "no", changed: "warn", unknown: "warn", pending: "" };
 const stat = (label, value, cls = "", sub = "") => h("div", { className: "rstat" }, h("span", { className: "rl", textContent: label }), h("span", { className: "rv " + cls, textContent: value }), ...(sub ? [h("span", { className: "rsub", textContent: sub })] : []));
 
 function reviewCard(r) {
   const head = h("div", { className: "shead" }, h("span", { className: "sname", textContent: r.label }));
-  if (r.simulated) head.append(h("span", { className: "pill", textContent: "simulated" }));
   head.append(h("span", { className: "pill " + (r.is_live ? "warn" : "ok"), textContent: r.is_live ? "live" : "demo" }));
   const card = h("div", { className: "rcard " + (r.ok ? "" : "bad") }, head);
   if (r.template) card.append(h("p", { className: "rtpl", textContent: "Template: " + r.template }));
@@ -32,11 +31,10 @@ function reviewCard(r) {
 function renderReview() {
   const rows = RV.rows, okRows = rows.filter((r) => r.ok);
   $("reviewList").replaceChildren(...rows.map(reviewCard));
-  const real = okRows.some((r) => !r.simulated);
   const o = $("orderForm").elements;
   $("rTitle").textContent = RV.phase === "sent" ? "Result" : "Review and send";
   $("rIntro").textContent = RV.phase === "sent" ? "This is what the broker answered. It is also in the send log."
-    : o.symbol.value.trim().toUpperCase() + ": nothing is sent until you confirm. " + (real ? "Goes to your demo account(s)." : "Mock accounts: the answer is simulated.");
+    : o.symbol.value.trim().toUpperCase() + ": nothing is sent until you confirm. " + "Goes to your demo account(s).";
   const btn = $("doSend");
   if (RV.phase === "sent") {
     const again = rows.some((r) => r.status === "changed");

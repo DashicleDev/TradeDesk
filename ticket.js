@@ -3,7 +3,7 @@
 const sheet = $("orderSheet");
 const oe = $("orderForm").elements;
 const POLL_MS = 4000;
-const TK = { autoLots: true, baseline: null, editing: null, entryTouched: false, quote: null, simulated: false, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, keep: {}, pipTouched: false };
+const TK = { autoLots: true, baseline: null, editing: null, entryTouched: false, quote: null, account: "", timer: null, busy: false, src: { sl: "pips", tp: "pips" }, keep: {}, pipTouched: false };
 
 const side = () => oe.side.value; // "buy" | "sell" | "" until chosen
 const pip = () => num(oe.pip.value);
@@ -100,15 +100,15 @@ function showPrices() {
 function defaultEntry() { // start at the current price; the user moves it from there
   if (!TK.entryTouched && market() != null) oe.entry.value = market().toFixed(dec());
 }
-function applyQuote(q, simulated, account) {
+function applyQuote(q, account) {
   q.pip_size = Number(q.pip_size.toPrecision(6)); // 10 ** -4 comes through as 0.00009999999999999999
-  TK.quote = q; TK.simulated = simulated; TK.account = account || "";
-  if (!TK.pipTouched) { oe.pip.value = q.pip_size; $("pipHint").textContent = `1 pip = ${q.pip_size}${simulated ? " (standard for this pair)" : " (from the broker)"}.`; }
+  TK.quote = q; TK.account = account || "";
+  if (!TK.pipTouched) { oe.pip.value = q.pip_size; $("pipHint").textContent = `1 pip = ${q.pip_size} (from the broker).`; }
   oe.lots.min = q.min_lots; oe.lots.step = q.step_lots; // the browser then rejects lot sizes the broker wouldn't accept
   $("lotHint").textContent = `Min ${q.min_lots}, step ${q.step_lots}, max ${q.max_lots}.`;
   const spread = ((q.ask - q.bid) / q.pip_size).toFixed(1);
   const t = new Date().toLocaleTimeString();
-  setLive(simulated ? `Simulated price (no cTrader account linked yet) · spread ${spread} pips · ${t}` : `Live price from ${account} · spread ${spread} pips · ${t}`, simulated ? "sim" : "live-ok");
+  setLive(`Live price from ${account} · spread ${spread} pips · ${t}`, "live-ok");
   showPrices(); defaultEntry(); updateAll(); ensureConv();
 }
 function noQuote(text) {
@@ -124,7 +124,7 @@ async function pollQuote() {
     TK.busy = true;
     try {
       const r = await call("quote", { symbol: sym });
-      if (oe.symbol.value.trim().toUpperCase() === sym && !sheet.hidden) applyQuote(r.quote, r.simulated, r.account);
+      if (oe.symbol.value.trim().toUpperCase() === sym && !sheet.hidden) applyQuote(r.quote, r.account);
     } catch (e) { if (oe.symbol.value.trim().toUpperCase() === sym) noQuote(`No live price: ${e.message}.`); }
     TK.busy = false;
   }

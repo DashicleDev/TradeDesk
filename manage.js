@@ -1,8 +1,9 @@
 // The menu for a running position or a pending order, laid out like the ticket: Take profit and Stop loss with the pips/price steppers and
 // the gross result, then "Apply to" account cards, then Save / Close position (or Cancel order). One dashboard row is the same trade on one
 // or more accounts. Uses call, $, h, msg, overview, PX, PREFS, guessPip, pipValueUsd (earlier files).
-// Only simulated trades can be changed for now; real cTrader trades arrive with step 4 (amend and cancel at the broker).
+// Changing a real trade (amend SL/TP, close, cancel) arrives with step 4, so for now the menu only shows the trade.
 const manageSheet = $("manageSheet");
+const STEP4 = "Changing trades at the broker arrives in step 4: for now manage them in cTrader.";
 let MG = null; // the group being managed
 let ML = {};   // per leg: { on, pips, price, dirty, differs }
 
@@ -41,7 +42,7 @@ function keptLeg(k) {
 
 function openManage(it) {
   MG = it;
-  const sim = it.ts.every((t) => t.sim), pos = it.kind === "position", total = it.ts.reduce((s, t) => s + Number(t.lots), 0);
+  const sim = false, pos = it.kind === "position", total = it.ts.reduce((s, t) => s + Number(t.lots), 0);
   $("mTitle").textContent = pos ? "Running position" : "Pending order";
   $("mSym").textContent = it.symbol;
   $("mSide").textContent = it.side === "buy" ? "Long (buy)" : "Short (sell)"; $("mSide").className = it.side === "buy" ? "long" : "short";
@@ -74,7 +75,7 @@ function openManage(it) {
 }
 
 function updateManage() {
-  const it = MG, sel = mSelected(), n = sel.length, sim = it.ts.every((t) => t.sim);
+  const it = MG, sel = mSelected(), n = sel.length, sim = false;
   $("mCount").textContent = `(${n} of ${it.ts.length})`;
   const q = PX[it.symbol], pv = q ? pipValueUsd(it.symbol, q) : null, lots = sel.reduce((s, t) => s + Number(t.lots), 0);
   if (q) { const d = it.side === "buy" ? q.ask : q.bid; $("mDist").textContent = "price now " + d.toFixed(q.digits); }
@@ -125,8 +126,8 @@ async function manageDo(fn) {
   $("mMsg").textContent = "";
   try { await fn(); manageSheet.hidden = true; overview(); } catch (e) { $("mMsg").textContent = e.message; }
 }
-$("mClose").onclick = () => manageDo(async () => { for (const t of mSelected()) await call("sim_close", { id: t.id }); });
-$("mFill").onclick = () => manageDo(async () => { for (const t of mSelected()) await call("sim_fill", { id: t.id }); });
+$("mClose").onclick = () => { $("mMsg").textContent = STEP4; };
+$("mFill").onclick = () => { $("mMsg").textContent = STEP4; };
 $("mSave").onclick = () => {
   const patch = {};
   for (const k of ["sl", "tp"]) if (ML[k].dirty) {
@@ -142,5 +143,5 @@ $("mSave").onclick = () => {
     patch[k] = price;
   }
   if (!Object.keys(patch).length) return ($("mMsg").textContent = "Nothing changed.");
-  manageDo(() => call("sim_amend", { ids: mSelected().map((t) => t.id), ...patch }));
+  $("mMsg").textContent = STEP4;
 };

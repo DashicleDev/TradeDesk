@@ -5,7 +5,6 @@
 //  - send only ever goes to demo accounts (live ones arrive in step 4) and only with a link that has the trading permission;
 //  - the server recomputes every order (lots, SL, TP, limits) itself; the page only displays what review returned;
 //  - one attempt per order and account (unique client order id): never retried, a failure is shown and logged;
-//  - mock accounts (td_accounts.is_mock) get a simulated answer and never touch cTrader.
 // Payload type numbers are confirmed against help.ctrader.com/open-api/model-messages (2026-11-15).
 // VERIFY on the first real run: the wss connection from here; pip size = 10^-pipPosition; the JSON form of the enums used in
 // the new-order request (orderType 2 limit / 3 stop, tradeSide 1 buy / 2 sell, timeInForce 1 GTD / 2 GTC); the asset list field names.
@@ -119,21 +118,6 @@ async function oneAccount(a: any, token: string) {
 }
 const base = (a: any) => ({ id: a.id, label: a.label, is_live: a.is_live });
 
-// Test rows (td_accounts.is_mock): fake numbers, never contact cTrader. Delete the rows to remove them.
-function mockAccount(a: any) {
-  const n = Number(a.ctid_account_id) % 5;
-  const balance = [10000, 25000, 100000, 50000, 200000][n];
-  return { ...base(a), balance, equity: balance + n * 37 - 60, positions: 0, orders: 0, trades: [] };
-}
-
-// Mock account plus its simulated orders and positions (td_sim)
-async function simAccount(uid: string, a: any) {
-  const m = mockAccount(a);
-  const { data } = await admin.from("td_sim").select("*").eq("user_id", uid).eq("account_id", a.id).neq("status", "closed").order("created_at");
-  const trades = (data ?? []).map((t: any) => ({ id: t.id, sim: true, kind: t.status === "open" ? "position" : "pending", symbol: t.symbol, side: t.side, lots: Number(t.lots), price: Number(t.entry), sl: t.sl == null ? null : Number(t.sl), tp: t.tp == null ? null : Number(t.tp), note: t.note ?? null }));
-  return { ...m, trades, positions: trades.filter((t) => t.kind === "position").length, orders: trades.filter((t) => t.kind === "pending").length };
-}
-
 // ---- symbol details and live price
 const symCache = new Map<string, any>(); // symbol details rarely change; cached per instance
 async function symbolInfo(c: any, id: number, sym: string) {
@@ -184,24 +168,8 @@ async function accountContext(c: any, id: number) {
   return { balance: money(trader.balance, trader.moneyDigits ?? 2), currency: cur ?? "?", openCount: (rec.position ?? []).length };
 }
 
-// Simulated prices when no real account is linked yet: majors and gold only. [mid, digits, pipPosition]
-const MOCK: Record<string, [number, number, number]> = {
-  EURUSD: [1.085, 5, 4], GBPUSD: [1.275, 5, 4], AUDUSD: [0.665, 5, 4], NZDUSD: [0.615, 5, 4], USDCAD: [1.395, 5, 4], USDCHF: [0.905, 5, 4],
-  USDJPY: [159.84, 3, 2], GBPJPY: [203.5, 3, 2], EURJPY: [173.5, 3, 2], XAUUSD: [2650.5, 2, 1],
-};
-function mockQuote(sym: string) {
-  const m = MOCK[sym];
-  if (!m) throw new Error(`No simulated price for ${sym} (majors and gold only until an account is linked)`);
-  const [mid, digits, pipPos] = m, pip = 10 ** -pipPos;
-  // steady for 30 s (same seed), so a review and the send that follows see the same price; it moves between windows like a real one
-  const r = Math.abs((Math.sin(Math.floor(Date.now() / 30000) * 12.9898 + sym.length) * 43758.5453) % 1);
-  const jitter = (r - 0.5) * pip * 4, half = pip * 0.6;
-  return { symbol: sym, bid: +(mid + jitter - half).toFixed(digits), ask: +(mid + jitter + half).toFixed(digits), digits, pip_size: Number(pip.toPrecision(6)), min_lots: 0.01, step_lots: 0.01, max_lots: 100 };
-}
-const mockCtx = (a: any) => ({ balance: mockAccount(a).balance, currency: "USD", openCount: 0 });
-
 // ---- review and send (step 3)
-const BLOCKING = ["sent", "simulated", "pending", "unknown"]; // an earlier attempt that must not be repeated automatically
+const BLOCKING = ["sent", "pending", "unknown"]; // an earlier attempt that must not be repeated automatically
 
 async function runOrder(uid: string, orderId: string, mode: "review" | "send", expected: { account_id: string; lots: number; orderType?: string }[]) {
   const { data: order } = await admin.from("td_orders").select("*").eq("id", orderId).eq("user_id", uid).maybeSingle();
@@ -214,14 +182,14 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
     admin.from("td_templates").select("*").eq("user_id", uid),
     admin.from("td_send_log").select("account_id,status").eq("user_id", uid).eq("order_id", orderId),
   ]);
-  const needReal = (accts ?? []).some((a: any) => !a.is_mock && !a.is_live);
+  const needReal = (accts ?? []).some((a: any) => !a.is_live);
   const tk = needReal ? await tokenRow(uid) : null;
 
   const rows: any[] = [];
   for (const t of targets) {
     const a = (accts ?? []).find((x: any) => x.id === t.account_id);
     const tpl = (tpls ?? []).find((x: any) => x.id === t.template_id) ?? null;
-    const head = { account_id: t.account_id, label: a?.label ?? "(removed account)", is_live: !!a?.is_live, template: tpl?.name ?? null, simulated: !!a?.is_mock };
+    const head = { account_id: t.account_id, label: a?.label ?? "(removed account)", is_live: !!a?.is_live, template: tpl?.name ?? null };
     const logBase = { user_id: uid, order_id: order.id, account_id: a?.id ?? null, account_label: head.label, is_live: head.is_live, symbol: order.symbol,
       side: order.side, order_type: order.order_type, template_name: head.template };
     const blocked = async (reason: string, status = "blocked") => {
@@ -238,15 +206,10 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
       const work = async (c: any, id: number | null) => {
         let sym: any, ctx: any, info: any = null;
         const cp = conversionPair(order.symbol); // a cross needs the price of its USD pair to value a pip in dollars
-        if (a.is_mock) {
-          sym = mockQuote(order.symbol); ctx = mockCtx(a);
-          if (cp) { try { const q = mockQuote(cp.symbol); ctx.conv = { bid: q.bid, ask: q.ask, direct: cp.direct }; } catch { /* no simulated price for it: the plan refuses */ } }
-        } else {
-          info = await symbolInfo(c, id!, order.symbol);
-          sym = { ...info, ...(await spot(c, id!, info)) };
-          ctx = await accountContext(c, id!);
-          if (cp) { try { const ci = await symbolInfo(c, id!, cp.symbol); ctx.conv = { ...(await spot(c, id!, ci)), direct: cp.direct }; } catch { /* the plan refuses without it */ } }
-        }
+        info = await symbolInfo(c, id!, order.symbol);
+        sym = { ...info, ...(await spot(c, id!, info)) };
+        ctx = await accountContext(c, id!);
+        if (cp) { try { const ci = await symbolInfo(c, id!, cp.symbol); ctx.conv = { ...(await spot(c, id!, ci)), direct: cp.direct }; } catch { /* the plan refuses without it */ } }
         const p = plan({ symbol: order.symbol, account: a, order, tpl, sym, ctx });
         if (!p.ok) return await blocked(p.reason);
         const shown = { ...head, ok: true, orderType: p.orderType, converted: p.converted, limitEntry: p.limitEntry, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, slPips: p.slPips, tpPips: p.tpPips, expiresAt: p.expiresAt, riskMoney: p.riskMoney, riskPct: p.riskPct, currency: ctx.currency };
@@ -261,15 +224,14 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
           await admin.from("td_send_log").insert({ ...logBase, order_type: p.orderType, status: "changed", message: why, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp });
           return rows.push({ ...shown, ok: false, reason: why, status: "changed" });
         }
-        if (!a.is_mock && tk!.scope !== "trading") return await blocked("this link is view-only: link again with the trading permission (Accounts tab)");
+        if (tk!.scope !== "trading") return await blocked("this link is view-only: link again with the trading permission (Accounts tab)");
 
         const clientId = `${order.id}-${String(a.id).slice(0, 8)}-${earlier.length + 1}`; // unique per attempt: a second send cannot go through
         const { data: row, error: insErr } = await admin.from("td_send_log").insert({ ...logBase, order_type: p.orderType, status: "pending", message: "sending", lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, client_order_id: clientId }).select("id").single();
         if (insErr) return rows.push({ ...shown, ok: false, reason: "could not record the attempt, so nothing was sent", status: "blocked" });
         let status = "sent", message = "", response: any = null;
         const atMarket = p.converted ? "At market, the price had passed your limit. " : "";
-        if (a.is_mock) { status = "simulated"; message = atMarket + "Simulated: nothing was sent to any broker"; response = { simulated: true, orderId: "SIM-" + crypto.randomUUID().slice(0, 8) }; }
-        else {
+        {
           try {
             const kind = p.orderType; // "limit" | "stop" | "market", derived from the entry and the live price (plan.mjs)
             const rel = (pips: number | null) => (pips == null ? undefined : Math.round(pips * info.pip_size * 1e5)); // relative SL/TP: 1/100000 of a price unit
@@ -291,12 +253,10 @@ async function runOrder(uid: string, orderId: string, mode: "review" | "send", e
             else { status = "rejected"; message = m; }
           }
         }
-        if (a.is_mock) await admin.from("td_sim").insert({ user_id: uid, account_id: a.id, symbol: order.symbol, side: order.side, lots: p.lots, entry: p.entry, sl: p.sl, tp: p.tp, note: order.note ?? null, status: p.orderType === "market" ? "open" : "pending" });
         await admin.from("td_send_log").update({ status, message, broker_response: response }).eq("id", row.id);
-        return rows.push({ ...shown, ok: status === "sent" || status === "simulated", reason: status === "sent" || status === "simulated" ? undefined : message, message, status });
+        return rows.push({ ...shown, ok: status === "sent", reason: status === "sent" ? undefined : message, message, status });
       };
-      if (a.is_mock) await work(null, null);
-      else await inAccount(a, tk!.token, (c, id) => work(c, id));
+      await inAccount(a, tk!.token, (c, id) => work(c, id));
     } catch (e) {
       const m = (e as Error).message;
       if (mode === "send") await admin.from("td_send_log").insert({ ...logBase, status: "blocked", message: m, entry: order.entry, sl: order.sl, tp: order.tp });
@@ -356,50 +316,30 @@ Deno.serve(async (req) => {
     if (body.action === "quote") {
       const sym = String(body.symbol ?? "").toUpperCase().replace(/[^A-Z0-9._#]/g, "").slice(0, 20);
       if (!sym) return json({ error: "no pair given" }, 400);
-      const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).eq("is_mock", false).order("is_live").order("created_at").limit(1);
+      const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).order("is_live").order("created_at").limit(1);
       const a = accts?.[0]; // a demo account first: the price is the broker's either way
-      if (!a) return json({ quote: mockQuote(sym), simulated: true });
-      return json({ quote: await realQuote(a, await accessToken(uid), sym), simulated: false, account: a.label });
+      if (!a) return json({ error: "Link a cTrader account first (Accounts tab)" }, 400);
+      return json({ quote: await realQuote(a, await accessToken(uid), sym), account: a.label });
     }
 
     if (body.action === "symbols") {
-      const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).eq("is_mock", false).order("is_live").order("created_at").limit(1);
+      const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).order("is_live").order("created_at").limit(1);
       const a = accts?.[0];
-      if (!a) return json({ symbols: Object.keys(MOCK).sort(), simulated: true }); // only what the simulated prices cover
-      return json({ symbols: await brokerSymbols(a, await accessToken(uid)), simulated: false, account: a.label });
+      if (!a) return json({ error: "Link a cTrader account first (Accounts tab)" }, 400);
+      return json({ symbols: await brokerSymbols(a, await accessToken(uid)), account: a.label });
     }
 
     if (body.action === "review" || body.action === "send") {
       return json(await runOrder(uid, String(body.order_id ?? ""), body.action, Array.isArray(body.expected) ? body.expected : []));
     }
 
-    if (body.action === "sim_fill" || body.action === "sim_close") { // simulated trades only: fill a waiting order now, or close a position / cancel an order
-      const { data: t } = await admin.from("td_sim").select("*").eq("id", String(body.id ?? "")).eq("user_id", uid).neq("status", "closed").maybeSingle();
-      if (!t) return json({ error: "no such simulated trade" }, 404);
-      if (body.action === "sim_fill") { if (t.status !== "pending") return json({ error: "already running" }, 400); await admin.from("td_sim").update({ status: "open" }).eq("id", t.id); }
-      else { const q = mockQuote(t.symbol); await admin.from("td_sim").update({ status: "closed", close_price: t.status === "open" ? (t.side === "buy" ? q.bid : q.ask) : null }).eq("id", t.id); }
-      return json({ ok: true });
-    }
-
-    if (body.action === "sim_amend") { // move or remove SL / TP on simulated trades; null removes
-      const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
-      const patch: Record<string, number | null> = {}; // only what was sent: a field left out stays as it is
-      for (const k of ["sl", "tp"]) if (k in body) { const v = num(body[k]); if (v !== null && !(v > 0)) return json({ error: "SL and TP must be prices" }, 400); patch[k] = v; }
-      if (!Object.keys(patch).length) return json({ error: "nothing to change" }, 400);
-      const ids = (Array.isArray(body.ids) ? body.ids : []).map(String).slice(0, 50);
-      if (!ids.length) return json({ error: "no trades chosen" }, 400);
-      const { error } = await admin.from("td_sim").update(patch).in("id", ids).eq("user_id", uid).neq("status", "closed");
-      if (error) return json({ error: "could not save" }, 500);
-      return json({ ok: true });
-    }
-
     if (body.action === "overview") {
       const { data: accts } = await admin.from("td_accounts").select("*").eq("user_id", uid).order("created_at");
       if (!accts?.length) return json({ accounts: [] });
-      const token = accts.some((a) => !a.is_mock) ? await accessToken(uid) : "";
+      const token = await accessToken(uid);
       const accounts = [];
       for (const a of accts) { // sequential: stays far below the 50 req/s limit
-        try { accounts.push(a.is_mock ? await simAccount(uid, a) : await oneAccount(a, token)); }
+        try { accounts.push(await oneAccount(a, token)); }
         catch (e) { accounts.push({ ...base(a), error: (e as Error).message }); }
       }
       return json({ accounts });

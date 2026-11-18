@@ -1,7 +1,7 @@
 // Dashboard: the headline numbers and the watchlist: your drafts and the pending orders at the broker, each with how far the price
 // is from its entry, live. Uses sb, call, $, h, num, openOrder, pipsBetween (earlier files).
 let DRAFTS = [], PENDING = [], POSITIONS = [], ACCT_DATA = []; // filled by loadDrafts (desk.js) and overview (app.js)
-const PX = {}; // symbol -> { bid, ask, digits, pip_size, simulated } or null when there is no price
+const PX = {}; // symbol -> { bid, ask, digits, pip_size } or null when there is no price
 const WATCH_MAX = 6; // symbols priced per round: each one is a call to the function
 
 // The one number up top: what the running positions are worth now, summed (pairs whose pip value is unknown are left out).
@@ -116,7 +116,7 @@ function renderWatch() {
   if (none) $("drafts").replaceChildren(h("p", { className: "hint", textContent: "Nothing yet. Tap + to plan an order." }));
   renderStats();
   const priced = Object.values(PX).filter(Boolean);
-  $("watchNote").textContent = !priced.length ? "" : priced.every((p) => p.simulated) ? "Simulated prices: no cTrader account is linked yet." : "Live prices, updated " + new Date().toLocaleTimeString();
+  $("watchNote").textContent = priced.length ? "Live prices, updated " + new Date().toLocaleTimeString() : "";
 }
 
 let priceBusy = false;
@@ -126,7 +126,7 @@ async function refreshPrices() {
   if (!syms.length) return;
   priceBusy = true;
   await Promise.all(syms.map(async (s) => {
-    try { const r = await call("quote", { symbol: s }); PX[s] = { ...r.quote, simulated: r.simulated }; } catch { PX[s] = null; }
+    try { const r = await call("quote", { symbol: s }); PX[s] = r.quote; } catch { PX[s] = null; }
   }));
   priceBusy = false; renderWatch();
 }
